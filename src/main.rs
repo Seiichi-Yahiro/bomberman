@@ -22,6 +22,8 @@ fn main() -> amethyst::Result<()> {
 
     let app_root = application_root_dir()?;
 
+    let assets_dir = app_root.join("assets");
+
     let config_dir = app_root.join("config");
     let display_config_path = config_dir.join("display.ron");
 
@@ -36,7 +38,7 @@ fn main() -> amethyst::Result<()> {
         )?
         .with_bundle(TransformBundle::new())?;
 
-    let mut game = Application::build("/", MyState)?
+    let mut game = Application::build(assets_dir, MyState)?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
             60,
