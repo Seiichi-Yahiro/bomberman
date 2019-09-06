@@ -1,0 +1,8 @@
+(
+    arenas: [
+        (
+            name: "Classic",
+            file: "classic_arena.ron"
+        )
+    ]
+)

@@ -1,6 +1,9 @@
+extern crate amethyst;
+extern crate serde;
+
 use amethyst::{
+    assets::Processor,
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
-    ecs::prelude::{ReadExpect, Resources, SystemData},
     prelude::*,
     renderer::{
         plugins::{RenderFlat2D, RenderToWindow},
@@ -11,11 +14,10 @@ use amethyst::{
 };
 use std::time::Duration;
 
-struct MyState;
-
-impl SimpleState for MyState {
-    fn on_start(&mut self, _data: StateData<'_, GameData<'_, '_>>) {}
-}
+mod assets;
+mod components;
+mod enums;
+mod states;
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -32,13 +34,15 @@ fn main() -> amethyst::Result<()> {
             RenderingBundle::<DefaultBackend>::new()
                 .with_plugin(
                     RenderToWindow::from_config_path(display_config_path)
-                        .with_clear([0.34, 0.36, 0.52, 1.0]),
+                        .with_clear([0.25, 0.25, 0.25, 1.0]),
                 )
                 .with_plugin(RenderFlat2D::default()),
         )?
-        .with_bundle(TransformBundle::new())?;
+        .with_bundle(TransformBundle::new())?
+        .with(Processor::<assets::Arenas>::new(), "", &[])
+        .with(Processor::<assets::Arena>::new(), "", &[]);
 
-    let mut game = Application::build(assets_dir, MyState)?
+    let mut game = Application::build(assets_dir, states::LoadMenu::new())?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
             60,
