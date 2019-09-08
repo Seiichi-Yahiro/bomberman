@@ -20,7 +20,6 @@ mod assets;
 mod components;
 mod enums;
 mod states;
-mod systems;
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
@@ -49,8 +48,7 @@ fn main() -> amethyst::Result<()> {
         )?
         .with_bundle(UiBundle::<StringBindings>::new())?
         .with(Processor::<assets::Arenas>::new(), "", &[])
-        .with(Processor::<assets::Arena>::new(), "", &[])
-        .with(systems::SelectArena, "select_arena", &["input_system"]);
+        .with(Processor::<assets::Arena>::new(), "", &[]);
 
     let mut game = Application::build(assets_dir, states::LoadMenu::new())?
         .with_frame_limit(

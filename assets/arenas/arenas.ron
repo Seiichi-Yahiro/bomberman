@@ -3,10 +3,6 @@
         (
             name: "Classic",
             file: "classic_arena.ron"
-        ),
-        (
-            name: "Long name is long long long",
-            file: "classic_arena2.ron"
         )
     ]
 )
