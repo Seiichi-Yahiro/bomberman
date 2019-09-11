@@ -1,6 +1,7 @@
 use crate::assets::Arenas;
 use amethyst::{
     assets::{AssetStorage, Handle, Loader, ProgressCounter, RonFormat},
+    audio::{output::Output, AudioSink, OggFormat, Source, SourceHandle},
     core::Parent,
     ecs::Entity,
     input::{is_key_down, VirtualKeyCode},
@@ -12,6 +13,7 @@ pub struct LoadMenu {
     progress_counter: ProgressCounter,
     arenas_handle: Option<Handle<Arenas>>,
     font_handle: Option<FontHandle>,
+    sfx_handle: Option<SourceHandle>,
 }
 
 impl LoadMenu {
@@ -20,6 +22,7 @@ impl LoadMenu {
             progress_counter: ProgressCounter::new(),
             arenas_handle: None,
             font_handle: None,
+            sfx_handle: None,
         }
     }
 }
@@ -37,13 +40,21 @@ impl SimpleState for LoadMenu {
         );
         self.arenas_handle = Some(arenas_handle);
 
-        let font_handle = world.read_resource::<Loader>().load(
+        let font_handle = loader.load(
             "fonts/verdana.ttf",
             TtfFormat,
             &mut self.progress_counter,
             &world.read_resource(),
         );
         self.font_handle = Some(font_handle);
+
+        let sfx_handle = loader.load(
+            "sfx/cursor.ogg",
+            OggFormat,
+            &mut self.progress_counter,
+            &world.read_resource(),
+        );
+        self.sfx_handle = Some(sfx_handle);
     }
 
     fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
@@ -51,6 +62,7 @@ impl SimpleState for LoadMenu {
             Trans::Switch(Box::new(Menu::new(
                 self.arenas_handle.take().unwrap(),
                 self.font_handle.take().unwrap(),
+                self.sfx_handle.take().unwrap(),
             )))
         } else {
             Trans::None
@@ -61,6 +73,7 @@ impl SimpleState for LoadMenu {
 pub struct Menu {
     font_handle: FontHandle,
     arenas_handle: Handle<Arenas>,
+    sfx_handle: SourceHandle,
     number_of_arenas: usize,
     arenas_parent_entity: Option<Entity>,
     selected_arena: usize,
@@ -94,6 +107,11 @@ impl SimpleState for Menu {
                         self.selected_arena -= 1
                     };
                     transform.local_y += self.font_size * movement;
+
+                    let source = data.world.read_resource::<AssetStorage<Source>>();
+                    let output = data.world.read_resource::<Output>();
+
+                    output.play_once(source.get(&self.sfx_handle).unwrap(), 1.0);
                 }
             } else if is_key_down(&event, VirtualKeyCode::Return) {
                 let arenas_assets = data.world.read_resource::<AssetStorage<Arenas>>();
@@ -109,10 +127,15 @@ impl SimpleState for Menu {
 }
 
 impl Menu {
-    pub fn new(arenas_handle: Handle<Arenas>, font_handle: FontHandle) -> Menu {
+    pub fn new(
+        arenas_handle: Handle<Arenas>,
+        font_handle: FontHandle,
+        sfx_handle: SourceHandle,
+    ) -> Menu {
         Menu {
             arenas_handle,
             font_handle,
+            sfx_handle,
             arenas_parent_entity: None,
             font_size: 30.0,
             selected_arena: 0,

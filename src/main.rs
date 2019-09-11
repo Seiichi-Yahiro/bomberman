@@ -3,6 +3,7 @@ extern crate serde;
 
 use amethyst::{
     assets::Processor,
+    audio::AudioBundle,
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
     input::{InputBundle, StringBindings},
     prelude::*,
@@ -47,6 +48,7 @@ fn main() -> amethyst::Result<()> {
                 .with_bindings_from_file(config_dir.join("input_bindings.ron"))?,
         )?
         .with_bundle(UiBundle::<StringBindings>::new())?
+        .with_bundle(AudioBundle::default())?
         .with(Processor::<assets::Arenas>::new(), "", &[])
         .with(Processor::<assets::Arena>::new(), "", &[]);
 
