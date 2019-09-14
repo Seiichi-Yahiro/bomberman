@@ -15,6 +15,7 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     utils::application_root_dir,
 };
+use states::prelude::*;
 use std::time::Duration;
 
 mod assets;
@@ -52,7 +53,7 @@ fn main() -> amethyst::Result<()> {
         .with(Processor::<assets::Arenas>::new(), "", &[])
         .with(Processor::<assets::Arena>::new(), "", &[]);
 
-    let mut game = Application::build(assets_dir, states::LoadMenu::new())?
+    let mut game = Application::build(assets_dir, *states::Menu::load())?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
             60,

@@ -1,83 +1,42 @@
 use crate::assets::Arenas;
+use crate::states::prelude::*;
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader, ProgressCounter, RonFormat},
-    audio::{output::Output, AudioSink, OggFormat, Source, SourceHandle},
+    assets::{AssetStorage, RonFormat},
+    audio::{output::Output, OggFormat, Source},
     core::Parent,
     ecs::Entity,
     input::{is_key_down, VirtualKeyCode},
     prelude::*,
-    ui::{Anchor, FontHandle, TtfFormat, UiText, UiTransform},
+    ui::{Anchor, TtfFormat, UiText, UiTransform},
 };
 
-pub struct LoadMenu {
-    progress_counter: ProgressCounter,
-    arenas_handle: Option<Handle<Arenas>>,
-    font_handle: Option<FontHandle>,
-    sfx_handle: Option<SourceHandle>,
-}
-
-impl LoadMenu {
-    pub fn new() -> LoadMenu {
-        LoadMenu {
-            progress_counter: ProgressCounter::new(),
-            arenas_handle: None,
-            font_handle: None,
-            sfx_handle: None,
-        }
-    }
-}
-
-impl SimpleState for LoadMenu {
-    fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let world = data.world;
-        let loader = world.read_resource::<Loader>();
-
-        let arenas_handle = loader.load(
-            "arenas/arenas.ron",
-            RonFormat,
-            &mut self.progress_counter,
-            &world.read_resource(),
-        );
-        self.arenas_handle = Some(arenas_handle);
-
-        let font_handle = loader.load(
-            "fonts/verdana.ttf",
-            TtfFormat,
-            &mut self.progress_counter,
-            &world.read_resource(),
-        );
-        self.font_handle = Some(font_handle);
-
-        let sfx_handle = loader.load(
-            "sfx/cursor.ogg",
-            OggFormat,
-            &mut self.progress_counter,
-            &world.read_resource(),
-        );
-        self.sfx_handle = Some(sfx_handle);
-    }
-
-    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        if self.progress_counter.is_complete() {
-            Trans::Switch(Box::new(Menu::new(
-                self.arenas_handle.take().unwrap(),
-                self.font_handle.take().unwrap(),
-                self.sfx_handle.take().unwrap(),
-            )))
-        } else {
-            Trans::None
-        }
-    }
-}
-
 pub struct Menu {
-    font_handle: FontHandle,
-    arenas_handle: Handle<Arenas>,
-    sfx_handle: SourceHandle,
     number_of_arenas: usize,
     arenas_parent_entity: Option<Entity>,
     selected_arena: usize,
     font_size: f32,
+    assets: Assets,
+}
+
+impl LoadableState for Menu {
+    fn load() -> Box<LoadState<Self>> {
+        let load_state = LoadStateBuilder::new()
+            .with_font("font", "fonts/verdana.ttf", TtfFormat)
+            .with_sfx("cursor", "sfx/cursor.ogg", OggFormat)
+            .with_custom("arenas", "arenas/arenas.ron", RonFormat)
+            .build();
+        Box::new(load_state)
+    }
+
+    fn new(assets: Assets) -> Box<Self> {
+        Box::new(Menu {
+            assets,
+            arenas_parent_entity: None,
+            font_size: 30.0,
+            selected_arena: 0,
+            number_of_arenas: 0,
+        })
+    }
 }
 
 impl SimpleState for Menu {
@@ -111,12 +70,17 @@ impl SimpleState for Menu {
                     let source = data.world.read_resource::<AssetStorage<Source>>();
                     let output = data.world.read_resource::<Output>();
 
-                    output.play_once(source.get(&self.sfx_handle).unwrap(), 1.0);
+                    output.play_once(
+                        source.get(&self.assets.sfx.get("cursor").unwrap()).unwrap(),
+                        1.0,
+                    );
                 }
             } else if is_key_down(&event, VirtualKeyCode::Return) {
                 let arenas_assets = data.world.read_resource::<AssetStorage<Arenas>>();
-                let file = &arenas_assets.get(&self.arenas_handle).unwrap().arenas
-                    [self.selected_arena]
+                let file = &arenas_assets
+                    .get(&self.assets.custom.get("arenas").unwrap())
+                    .unwrap()
+                    .arenas[self.selected_arena]
                     .file;
                 println!("{}", file);
             }
@@ -127,27 +91,11 @@ impl SimpleState for Menu {
 }
 
 impl Menu {
-    pub fn new(
-        arenas_handle: Handle<Arenas>,
-        font_handle: FontHandle,
-        sfx_handle: SourceHandle,
-    ) -> Menu {
-        Menu {
-            arenas_handle,
-            font_handle,
-            sfx_handle,
-            arenas_parent_entity: None,
-            font_size: 30.0,
-            selected_arena: 0,
-            number_of_arenas: 0,
-        }
-    }
-
     fn initialize_arena_selection(&mut self, world: &mut World) {
         let arena_names: Vec<String> = {
             let arenas_assets = world.read_resource::<AssetStorage<Arenas>>();
             arenas_assets
-                .get(&self.arenas_handle)
+                .get(&self.assets.custom.get("arenas").unwrap())
                 .unwrap()
                 .arenas
                 .iter()
@@ -172,7 +120,7 @@ impl Menu {
 
         arena_names.iter().enumerate().for_each(|(index, name)| {
             let arena_name_text = UiText::new(
-                self.font_handle.clone(),
+                (*self.assets.fonts.get("font").unwrap()).clone(),
                 name.clone(),
                 [0.8, 0.8, 0.8, 1.0],
                 self.font_size,
