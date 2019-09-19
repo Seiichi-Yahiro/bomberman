@@ -1,4 +1,5 @@
 use crate::assets::Arenas;
+use crate::assets::AssetType;
 use crate::states::prelude::*;
 use amethyst::{
     assets::{AssetStorage, RonFormat},
@@ -7,7 +8,7 @@ use amethyst::{
     ecs::Entity,
     input::{is_key_down, VirtualKeyCode},
     prelude::*,
-    ui::{Anchor, TtfFormat, UiText, UiTransform},
+    ui::{Anchor, FontAsset, TtfFormat, UiText, UiTransform},
 };
 
 pub struct Menu {
@@ -15,20 +16,20 @@ pub struct Menu {
     arenas_parent_entity: Option<Entity>,
     selected_arena: usize,
     font_size: f32,
-    assets: Assets,
+    assets: AssetHandles<AssetType>,
 }
 
-impl LoadableState for Menu {
-    fn load() -> Box<LoadState<Self>> {
+impl LoadableState<AssetType> for Menu {
+    fn load() -> Box<LoadState<Self, AssetType>> {
         let load_state = LoadStateBuilder::new()
-            .with_font("font", "fonts/verdana.ttf", TtfFormat)
-            .with_sfx("cursor", "sfx/cursor.ogg", OggFormat)
-            .with_custom("arenas", "arenas/arenas.ron", RonFormat)
+            .with::<FontAsset, TtfFormat>("font", "fonts/verdana.ttf", TtfFormat)
+            .with::<Source, OggFormat>("cursor", "sfx/cursor.ogg", OggFormat)
+            .with::<Arenas, RonFormat>("arenas", "arenas/arenas.ron", RonFormat)
             .build();
         Box::new(load_state)
     }
 
-    fn new(assets: Assets) -> Box<Self> {
+    fn new(assets: AssetHandles<AssetType>) -> Box<Self> {
         Box::new(Menu {
             assets,
             arenas_parent_entity: None,
@@ -71,14 +72,16 @@ impl SimpleState for Menu {
                     let output = data.world.read_resource::<Output>();
 
                     output.play_once(
-                        source.get(&self.assets.sfx.get("cursor").unwrap()).unwrap(),
+                        source
+                            .get(&self.assets.get("cursor").unwrap().clone().into())
+                            .unwrap(),
                         1.0,
                     );
                 }
             } else if is_key_down(&event, VirtualKeyCode::Return) {
                 let arenas_assets = data.world.read_resource::<AssetStorage<Arenas>>();
                 let file = &arenas_assets
-                    .get(&self.assets.custom.get("arenas").unwrap())
+                    .get(&self.assets.get("arenas").unwrap().clone().into())
                     .unwrap()
                     .arenas[self.selected_arena]
                     .file;
@@ -95,7 +98,7 @@ impl Menu {
         let arena_names: Vec<String> = {
             let arenas_assets = world.read_resource::<AssetStorage<Arenas>>();
             arenas_assets
-                .get(&self.assets.custom.get("arenas").unwrap())
+                .get(&self.assets.get("arenas").unwrap().clone().into())
                 .unwrap()
                 .arenas
                 .iter()
@@ -120,7 +123,7 @@ impl Menu {
 
         arena_names.iter().enumerate().for_each(|(index, name)| {
             let arena_name_text = UiText::new(
-                (*self.assets.fonts.get("font").unwrap()).clone(),
+                self.assets.get("font").unwrap().clone().into(),
                 name.clone(),
                 [0.8, 0.8, 0.8, 1.0],
                 self.font_size,

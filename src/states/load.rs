@@ -1,175 +1,113 @@
-use crate::assets::Arenas;
 use amethyst::{
     assets::{Asset, Format, Handle, Loader, ProgressCounter},
-    audio::Source,
     prelude::*,
-    ui::FontAsset,
 };
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-type LoadAssetFn<A> = dyn Fn(&World, &mut ProgressCounter) -> Handle<A>;
-type LoadAssetVec<A> = Vec<(&'static str, Box<LoadAssetFn<A>>)>;
-type AssetHandles<A> = HashMap<&'static str, Handle<A>>;
+type AssetLoaders<E> = HashMap<&'static str, Box<dyn Fn(&World, &mut ProgressCounter) -> E>>;
+pub type AssetHandles<E> = HashMap<&'static str, E>;
 
-pub struct AssetLoaders {
-    fonts: LoadAssetVec<FontAsset>,
-    sfx: LoadAssetVec<Source>,
-    custom: LoadAssetVec<Arenas>,
-}
-
-pub struct Assets {
-    pub fonts: AssetHandles<FontAsset>,
-    pub sfx: AssetHandles<Source>,
-    pub custom: AssetHandles<Arenas>,
-}
-
-pub struct LoadState<T> {
-    phantom: PhantomData<T>,
+pub struct LoadState<S, E>
+where
+    S: LoadableState<E>,
+    E: Clone,
+{
+    phantom: PhantomData<S>,
     progress_counter: ProgressCounter,
-    asset_loaders: AssetLoaders,
-    assets: Option<Assets>,
+    asset_loaders: AssetLoaders<E>,
+    assets: AssetHandles<E>,
 }
 
-impl<T> LoadState<T> {
-    pub fn new(asset_loaders: AssetLoaders) -> LoadState<T>
+impl<S, E> LoadState<S, E>
+where
+    S: LoadableState<E>,
+    E: Clone,
+{
+    pub fn new(asset_loaders: AssetLoaders<E>) -> LoadState<S, E>
     where
-        T: LoadableState,
+        S: LoadableState<E>,
+        E: Clone,
     {
         LoadState {
             phantom: PhantomData,
             progress_counter: ProgressCounter::new(),
             asset_loaders,
-            assets: None,
+            assets: HashMap::new(),
         }
-    }
-
-    fn load_asset<A: Asset>(
-        asset_loaders: &LoadAssetVec<A>,
-        world: &World,
-        progess: &mut ProgressCounter,
-    ) -> AssetHandles<A> {
-        let mut map: AssetHandles<A> = HashMap::new();
-
-        asset_loaders.iter().for_each(|(key, load)| {
-            let handle = load(world, progess);
-            map.insert(key, handle);
-        });
-
-        map
     }
 }
 
-impl<T> SimpleState for LoadState<T>
+impl<S, E> SimpleState for LoadState<S, E>
 where
-    T: LoadableState + 'static,
+    S: LoadableState<E> + 'static,
+    E: Clone,
 {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
-        let assets = Assets {
-            fonts: Self::load_asset(&self.asset_loaders.fonts, world, &mut self.progress_counter),
-            sfx: Self::load_asset(&self.asset_loaders.sfx, world, &mut self.progress_counter),
-            custom: Self::load_asset(
-                &self.asset_loaders.custom,
-                world,
-                &mut self.progress_counter,
-            ),
-        };
-
-        self.assets = Some(assets);
+        for (key, load) in self.asset_loaders.iter() {
+            let e_handle = load(world, &mut self.progress_counter);
+            self.assets.insert(key, e_handle);
+        }
     }
 
     fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
-            return Trans::Switch(T::new(self.assets.take().unwrap()));
+            return Trans::Switch(S::new(self.assets.clone()));
         }
 
         Trans::None
     }
 }
 
-pub trait LoadableState: SimpleState + Sized {
-    fn load() -> Box<LoadState<Self>>;
-    fn new(assets: Assets) -> Box<Self>;
+pub trait LoadableState<E>: SimpleState + Sized
+where
+    E: Clone,
+{
+    fn load() -> Box<LoadState<Self, E>>;
+    fn new(assets: AssetHandles<E>) -> Box<Self>;
 }
 
-pub struct LoadStateBuilder {
-    fonts: LoadAssetVec<FontAsset>,
-    sfx: LoadAssetVec<Source>,
-    custom: LoadAssetVec<Arenas>,
+pub struct LoadStateBuilder<E>
+where
+    E: Clone,
+{
+    asset_loaders: AssetLoaders<E>,
 }
 
-impl LoadStateBuilder {
-    pub fn new() -> LoadStateBuilder {
+impl<E> LoadStateBuilder<E>
+where
+    E: Clone,
+{
+    pub fn new() -> LoadStateBuilder<E> {
         LoadStateBuilder {
-            fonts: vec![],
-            sfx: vec![],
-            custom: vec![],
+            asset_loaders: HashMap::new(),
         }
     }
 
-    fn with<A: Asset, F: Format<A::Data> + Clone>(
-        filename: &'static str,
-        format: F,
-    ) -> Box<LoadAssetFn<A>> {
-        let cloned_format = format.clone();
-
-        let f = move |world: &World, progress: &mut ProgressCounter| -> Handle<A> {
-            let loader = world.read_resource::<Loader>();
-            loader.load(
-                filename,
-                cloned_format.clone(),
-                progress,
-                &world.read_resource(),
-            )
-        };
-
-        Box::new(f)
-    }
-
-    pub fn with_font<F: Format<<FontAsset as Asset>::Data> + Clone>(
-        mut self,
-        key: &'static str,
-        filename: &'static str,
-        format: F,
-    ) -> Self {
-        let f = Self::with(filename, format);
-        self.fonts.push((key, f));
-        self
-    }
-
-    pub fn with_sfx<F: Format<<Source as Asset>::Data> + Clone>(
-        mut self,
-        key: &'static str,
-        filename: &'static str,
-        format: F,
-    ) -> Self {
-        let f = Self::with(filename, format);
-        self.sfx.push((key, f));
-        self
-    }
-
-    pub fn with_custom<F: Format<<Arenas as Asset>::Data> + Clone>(
-        mut self,
-        key: &'static str,
-        filename: &'static str,
-        format: F,
-    ) -> Self {
-        let f = Self::with(filename, format);
-        self.custom.push((key, f));
-        self
-    }
-
-    pub fn build<T>(self) -> LoadState<T>
+    pub fn with<A, F>(mut self, key: &'static str, filename: &'static str, format: F) -> Self
     where
-        T: LoadableState,
+        A: Asset,
+        F: Format<A::Data> + Clone,
+        E: From<Handle<A>> + Clone,
     {
-        let asset_loaders = AssetLoaders {
-            fonts: self.fonts,
-            sfx: self.sfx,
-            custom: self.custom,
+        let f = move |world: &World, progress: &mut ProgressCounter| -> E {
+            let loader = world.read_resource::<Loader>();
+            let handle = loader.load(filename, format.clone(), progress, &world.read_resource());
+            E::from(handle)
         };
-        LoadState::new(asset_loaders)
+
+        self.asset_loaders.insert(key, Box::new(f));
+
+        self
+    }
+
+    pub fn build<S>(self) -> LoadState<S, E>
+    where
+        S: LoadableState<E>,
+        E: Clone,
+    {
+        LoadState::new(self.asset_loaders)
     }
 }
