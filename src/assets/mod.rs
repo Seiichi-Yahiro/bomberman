@@ -5,4 +5,4 @@ mod asset_types;
 pub use arena::Arena;
 pub use arenas::ArenaData;
 pub use arenas::Arenas;
-pub use asset_types::AssetType;
+pub use asset_types::LoadableAssetType;

@@ -90,7 +90,7 @@ where
     where
         A: Asset,
         F: Format<A::Data> + Clone,
-        E: From<Handle<A>> + Clone,
+        E: From<Handle<A>> + Into<Handle<A>> + Clone,
     {
         let f = move |world: &World, progress: &mut ProgressCounter| -> E {
             let loader = world.read_resource::<Loader>();

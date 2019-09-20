@@ -1,5 +1,5 @@
 use crate::assets::Arenas;
-use crate::assets::AssetType;
+use crate::assets::LoadableAssetType;
 use crate::states::prelude::*;
 use amethyst::{
     assets::{AssetStorage, RonFormat},
@@ -16,11 +16,11 @@ pub struct Menu {
     arenas_parent_entity: Option<Entity>,
     selected_arena: usize,
     font_size: f32,
-    assets: AssetHandles<AssetType>,
+    assets: AssetHandles<LoadableAssetType>,
 }
 
-impl LoadableState<AssetType> for Menu {
-    fn load() -> Box<LoadState<Self, AssetType>> {
+impl LoadableState<LoadableAssetType> for Menu {
+    fn load() -> Box<LoadState<Self, LoadableAssetType>> {
         let load_state = LoadStateBuilder::new()
             .with::<FontAsset, TtfFormat>("font", "fonts/verdana.ttf", TtfFormat)
             .with::<Source, OggFormat>("cursor", "sfx/cursor.ogg", OggFormat)
@@ -29,7 +29,7 @@ impl LoadableState<AssetType> for Menu {
         Box::new(load_state)
     }
 
-    fn new(assets: AssetHandles<AssetType>) -> Box<Self> {
+    fn new(assets: AssetHandles<LoadableAssetType>) -> Box<Self> {
         Box::new(Menu {
             assets,
             arenas_parent_entity: None,
