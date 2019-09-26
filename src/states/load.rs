@@ -1,3 +1,4 @@
+use crate::assets::{AssetData, LoadableAssetType};
 use amethyst::{
     assets::{Asset, Format, Handle, Loader, ProgressCounter},
     prelude::*,
@@ -5,29 +6,27 @@ use amethyst::{
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-type AssetLoaders<E> = HashMap<&'static str, Box<dyn Fn(&World, &mut ProgressCounter) -> E>>;
-pub type AssetHandles<E> = HashMap<&'static str, E>;
+type AssetLoaders =
+    HashMap<&'static str, Box<dyn Fn(&World, &mut ProgressCounter) -> LoadableAssetType>>;
+pub type AssetHandles = HashMap<&'static str, LoadableAssetType>;
 
-pub struct LoadState<S, E>
+pub struct LoadState<S>
 where
-    S: LoadableState<E>,
-    E: Clone,
+    S: LoadableState,
 {
     phantom: PhantomData<S>,
     progress_counter: ProgressCounter,
-    asset_loaders: AssetLoaders<E>,
-    assets: AssetHandles<E>,
+    asset_loaders: AssetLoaders,
+    assets: AssetHandles,
 }
 
-impl<S, E> LoadState<S, E>
+impl<S> LoadState<S>
 where
-    S: LoadableState<E>,
-    E: Clone,
+    S: LoadableState,
 {
-    pub fn new(asset_loaders: AssetLoaders<E>) -> LoadState<S, E>
+    pub fn new(asset_loaders: AssetLoaders) -> LoadState<S>
     where
-        S: LoadableState<E>,
-        E: Clone,
+        S: LoadableState,
     {
         LoadState {
             phantom: PhantomData,
@@ -38,10 +37,9 @@ where
     }
 }
 
-impl<S, E> SimpleState for LoadState<S, E>
+impl<S> SimpleState for LoadState<S>
 where
-    S: LoadableState<E> + 'static,
-    E: Clone,
+    S: LoadableState + 'static,
 {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
@@ -61,52 +59,47 @@ where
     }
 }
 
-pub trait LoadableState<E>: SimpleState + Sized
-where
-    E: Clone,
-{
-    fn load() -> Box<LoadState<Self, E>>;
-    fn new(assets: AssetHandles<E>) -> Box<Self>;
+pub trait LoadableState: SimpleState + Sized {
+    fn load() -> Box<LoadState<Self>>;
+    fn new(assets: AssetHandles) -> Box<Self>;
 }
 
-pub struct LoadStateBuilder<E>
-where
-    E: Clone,
-{
-    asset_loaders: AssetLoaders<E>,
+pub struct LoadStateBuilder {
+    asset_loaders: AssetLoaders,
 }
 
-impl<E> LoadStateBuilder<E>
-where
-    E: Clone,
-{
-    pub fn new() -> LoadStateBuilder<E> {
+impl LoadStateBuilder {
+    pub fn new() -> LoadStateBuilder {
         LoadStateBuilder {
             asset_loaders: HashMap::new(),
         }
     }
 
-    pub fn with<A, F>(mut self, key: &'static str, filename: &'static str, format: F) -> Self
+    pub fn with<A, F>(mut self, asset_data: &'static AssetData<A, F>) -> Self
     where
         A: Asset,
         F: Format<A::Data> + Clone,
-        E: From<Handle<A>> + Into<Handle<A>> + Clone,
+        LoadableAssetType: From<Handle<A>> + Into<Handle<A>> + Clone,
     {
-        let f = move |world: &World, progress: &mut ProgressCounter| -> E {
+        let f = move |world: &World, progress: &mut ProgressCounter| -> LoadableAssetType {
             let loader = world.read_resource::<Loader>();
-            let handle = loader.load(filename, format.clone(), progress, &world.read_resource());
-            E::from(handle)
+            let handle = loader.load(
+                asset_data.filename,
+                asset_data.format.clone(),
+                progress,
+                &world.read_resource(),
+            );
+            LoadableAssetType::from(handle)
         };
 
-        self.asset_loaders.insert(key, Box::new(f));
+        self.asset_loaders.insert(asset_data.name, Box::new(f));
 
         self
     }
 
-    pub fn build<S>(self) -> LoadState<S, E>
+    pub fn build<S>(self) -> LoadState<S>
     where
-        S: LoadableState<E>,
-        E: Clone,
+        S: LoadableState,
     {
         LoadState::new(self.asset_loaders)
     }
