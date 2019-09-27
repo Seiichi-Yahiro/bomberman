@@ -1,8 +1,7 @@
-use crate::assets::{Arenas, ASSET_DATAS};
+use crate::assets::ASSET_DATAS;
 use crate::states::prelude::*;
 use amethyst::{
-    assets::AssetStorage,
-    audio::{output::Output, Source},
+    audio::output::Output,
     core::Parent,
     ecs::Entity,
     input::{is_key_down, VirtualKeyCode},
@@ -15,7 +14,6 @@ pub struct Menu {
     arenas_parent_entity: Option<Entity>,
     selected_arena: usize,
     font_size: f32,
-    assets: AssetHandles,
 }
 
 impl LoadableState for Menu {
@@ -28,9 +26,8 @@ impl LoadableState for Menu {
         Box::new(load_state)
     }
 
-    fn new(assets: AssetHandles) -> Box<Self> {
+    fn new() -> Box<Self> {
         Box::new(Menu {
-            assets,
             arenas_parent_entity: None,
             font_size: 30.0,
             selected_arena: 0,
@@ -67,38 +64,15 @@ impl SimpleState for Menu {
                     };
                     transform.local_y += self.font_size * movement;
 
-                    let source = data.world.read_resource::<AssetStorage<Source>>();
-                    let output = data.world.read_resource::<Output>();
-
-                    output.play_once(
-                        source
-                            .get(
-                                &self
-                                    .assets
-                                    .get(ASSET_DATAS.sfx_cursor.name)
-                                    .unwrap()
-                                    .clone()
-                                    .into(),
-                            )
-                            .unwrap(),
-                        1.0,
-                    );
+                    with_asset(data.world, &ASSET_DATAS.sfx_cursor, |asset| {
+                        let output = data.world.read_resource::<Output>();
+                        output.play_once(asset, 1.0);
+                    });
                 }
             } else if is_key_down(&event, VirtualKeyCode::Return) {
-                let arenas_assets = data.world.read_resource::<AssetStorage<Arenas>>();
-                let file = &arenas_assets
-                    .get(
-                        &self
-                            .assets
-                            .get(ASSET_DATAS.custom_arenas.name)
-                            .unwrap()
-                            .clone()
-                            .into(),
-                    )
-                    .unwrap()
-                    .arenas[self.selected_arena]
-                    .file;
-                println!("{}", file);
+                with_asset(data.world, &ASSET_DATAS.custom_arenas, |asset| {
+                    println!("{}", asset.arenas[self.selected_arena].file);
+                });
             }
         }
 
@@ -108,23 +82,13 @@ impl SimpleState for Menu {
 
 impl Menu {
     fn initialize_arena_selection(&mut self, world: &mut World) {
-        let arena_names: Vec<String> = {
-            let arenas_assets = world.read_resource::<AssetStorage<Arenas>>();
-            arenas_assets
-                .get(
-                    &self
-                        .assets
-                        .get(ASSET_DATAS.custom_arenas.name)
-                        .unwrap()
-                        .clone()
-                        .into(),
-                )
-                .unwrap()
+        let arena_names: Vec<String> = with_asset(world, &ASSET_DATAS.custom_arenas, |asset| {
+            asset
                 .arenas
                 .iter()
                 .map(|arena_data| arena_data.name.clone())
                 .collect()
-        };
+        });
 
         let parent = {
             let transform = UiTransform::new(
@@ -143,11 +107,7 @@ impl Menu {
 
         arena_names.iter().enumerate().for_each(|(index, name)| {
             let arena_name_text = UiText::new(
-                self.assets
-                    .get(ASSET_DATAS.font_main.name)
-                    .unwrap()
-                    .clone()
-                    .into(),
+                get_asset_handle(world, &ASSET_DATAS.font_main),
                 name.clone(),
                 [0.8, 0.8, 0.8, 1.0],
                 self.font_size,

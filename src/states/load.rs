@@ -1,6 +1,6 @@
 use crate::assets::{AssetData, LoadableAssetType};
 use amethyst::{
-    assets::{Asset, Format, Handle, Loader, ProgressCounter},
+    assets::{Asset, AssetStorage, Format, Handle, Loader, ProgressCounter},
     prelude::*,
 };
 use std::collections::HashMap;
@@ -17,7 +17,6 @@ where
     phantom: PhantomData<S>,
     progress_counter: ProgressCounter,
     asset_loaders: AssetLoaders,
-    assets: AssetHandles,
 }
 
 impl<S> LoadState<S>
@@ -32,7 +31,6 @@ where
             phantom: PhantomData,
             progress_counter: ProgressCounter::new(),
             asset_loaders,
-            assets: HashMap::new(),
         }
     }
 }
@@ -44,15 +42,17 @@ where
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
 
+        let mut asset_handles = world.write_resource::<AssetHandles>();
+
         for (key, load) in self.asset_loaders.iter() {
-            let e_handle = load(world, &mut self.progress_counter);
-            self.assets.insert(key, e_handle);
+            let handle = load(world, &mut self.progress_counter);
+            asset_handles.insert(key, handle);
         }
     }
 
     fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
-            return Trans::Switch(S::new(self.assets.clone()));
+            return Trans::Switch(S::new());
         }
 
         Trans::None
@@ -61,7 +61,7 @@ where
 
 pub trait LoadableState: SimpleState + Sized {
     fn load() -> Box<LoadState<Self>>;
-    fn new(assets: AssetHandles) -> Box<Self>;
+    fn new() -> Box<Self>;
 }
 
 pub struct LoadStateBuilder {
@@ -79,7 +79,7 @@ impl LoadStateBuilder {
     where
         A: Asset,
         F: Format<A::Data> + Clone,
-        LoadableAssetType: From<Handle<A>> + Into<Handle<A>> + Clone,
+        LoadableAssetType: From<Handle<A>>,
     {
         let f = move |world: &World, progress: &mut ProgressCounter| -> LoadableAssetType {
             let loader = world.read_resource::<Loader>();
@@ -103,4 +103,30 @@ impl LoadStateBuilder {
     {
         LoadState::new(self.asset_loaders)
     }
+}
+
+pub fn get_asset_handle<A, F>(world: &World, asset_data: &'static AssetData<A, F>) -> Handle<A>
+where
+    A: Asset,
+    F: Format<A::Data>,
+    LoadableAssetType: Into<Handle<A>> + Clone,
+{
+    let asset_handles = world.read_resource::<AssetHandles>();
+    asset_handles.get(asset_data.name).unwrap().clone().into()
+}
+
+pub fn with_asset<A, F, R>(
+    world: &World,
+    asset_data: &'static AssetData<A, F>,
+    f: impl Fn(&A) -> R,
+) -> R
+where
+    A: Asset,
+    F: Format<A::Data>,
+    LoadableAssetType: Into<Handle<A>> + Clone,
+{
+    let handle = get_asset_handle(world, asset_data);
+    let assets = world.read_resource::<AssetStorage<A>>();
+    let asset = assets.get(&handle).unwrap();
+    f(asset)
 }
