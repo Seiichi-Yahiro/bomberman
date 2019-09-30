@@ -1,4 +1,5 @@
 use crate::assets::ASSET_DATAS;
+use crate::states;
 use crate::states::prelude::*;
 use amethyst::{
     audio::output::Output,
@@ -17,7 +18,9 @@ pub struct Menu {
 }
 
 impl LoadableState for Menu {
-    fn load() -> Box<LoadState<Self>> {
+    type Data = ();
+
+    fn load(_data: Self::Data) -> Box<LoadState<Self>> {
         let load_state = LoadStateBuilder::new()
             .with(&ASSET_DATAS.font_main)
             .with(&ASSET_DATAS.sfx_cursor)
@@ -40,6 +43,12 @@ impl SimpleState for Menu {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
         self.initialize_arena_selection(world);
+    }
+
+    fn on_stop(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        data.world
+            .delete_entity(self.arenas_parent_entity.unwrap())
+            .expect("Could not delete arenas selection entities!");
     }
 
     fn handle_event(
@@ -70,8 +79,9 @@ impl SimpleState for Menu {
                     });
                 }
             } else if is_key_down(&event, VirtualKeyCode::Return) {
-                with_asset(data.world, &ASSET_DATAS.custom_arenas, |asset| {
-                    println!("{}", asset.arenas[self.selected_arena].file);
+                return with_asset(data.world, &ASSET_DATAS.custom_arenas, |asset| {
+                    let filename = asset.arenas[self.selected_arena].file.clone();
+                    Trans::Switch(states::Game::load(filename))
                 });
             }
         }

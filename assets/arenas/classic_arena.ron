@@ -1,5 +1,17 @@
 (
     tiles: [
-        [Wall(0), Wall(0)]
+        [Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24), Ground(26), Wall(24)],
+        [Wall(24), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Ground(26), Wall(24)],
+        [Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24), Wall(24)]
     ]
 )

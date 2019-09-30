@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub enum Tile {
     Ground(u8),
     Wall(u8),

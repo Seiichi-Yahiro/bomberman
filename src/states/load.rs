@@ -60,7 +60,9 @@ where
 }
 
 pub trait LoadableState: SimpleState + Sized {
-    fn load() -> Box<LoadState<Self>>;
+    type Data;
+
+    fn load(data: Self::Data) -> Box<LoadState<Self>>;
     fn new() -> Box<Self>;
 }
 
@@ -75,26 +77,35 @@ impl LoadStateBuilder {
         }
     }
 
-    pub fn with<A, F>(mut self, asset_data: &'static AssetData<A, F>) -> Self
+    pub fn with<A, F>(mut self, asset_data: &AssetData<A, F>) -> Self
     where
         A: Asset,
         F: Format<A::Data> + Clone,
         LoadableAssetType: From<Handle<A>>,
     {
-        let f = move |world: &World, progress: &mut ProgressCounter| -> LoadableAssetType {
-            let loader = world.read_resource::<Loader>();
-            let handle = loader.load(
-                asset_data.filename,
-                asset_data.format.clone(),
-                progress,
-                &world.read_resource(),
-            );
-            LoadableAssetType::from(handle)
-        };
-
-        self.asset_loaders.insert(asset_data.name, Box::new(f));
+        let asset_loader = LoadStateBuilder::create_asset_loader(asset_data);
+        self.asset_loaders
+            .insert(asset_data.name, Box::new(asset_loader));
 
         self
+    }
+
+    fn create_asset_loader<A, F>(
+        asset_data: &AssetData<A, F>,
+    ) -> impl Fn(&World, &mut ProgressCounter) -> LoadableAssetType
+    where
+        A: Asset,
+        F: Format<A::Data> + Clone,
+        LoadableAssetType: From<Handle<A>>,
+    {
+        let filename = String::from(asset_data.filename);
+        let format = asset_data.format.clone();
+
+        move |world: &World, progress: &mut ProgressCounter| -> LoadableAssetType {
+            let loader = world.read_resource::<Loader>();
+            let handle = loader.load(&filename, format.clone(), progress, &world.read_resource());
+            LoadableAssetType::from(handle)
+        }
     }
 
     pub fn build<S>(self) -> LoadState<S>
@@ -115,6 +126,22 @@ where
     asset_handles.get(asset_data.name).unwrap().clone().into()
 }
 
+pub fn get_dynamic_asset_handle<A>(world: &World, asset_name: &'static str) -> Handle<A>
+where
+    A: Asset,
+    LoadableAssetType: Into<Handle<A>> + Clone,
+{
+    let asset_handles = world.read_resource::<AssetHandles>();
+    asset_handles
+        .get(asset_name)
+        .expect(&format!(
+            "Could not find a dynamic asset with the name {}",
+            asset_name
+        ))
+        .clone()
+        .into()
+}
+
 pub fn with_asset<A, F, R>(
     world: &World,
     asset_data: &'static AssetData<A, F>,
@@ -126,6 +153,17 @@ where
     LoadableAssetType: Into<Handle<A>> + Clone,
 {
     let handle = get_asset_handle(world, asset_data);
+    let assets = world.read_resource::<AssetStorage<A>>();
+    let asset = assets.get(&handle).unwrap();
+    f(asset)
+}
+
+pub fn with_dynamic_asset<A, R>(world: &World, asset_name: &'static str, f: impl Fn(&A) -> R) -> R
+where
+    A: Asset,
+    LoadableAssetType: Into<Handle<A>> + Clone,
+{
+    let handle = get_dynamic_asset_handle::<A>(world, asset_name);
     let assets = world.read_resource::<AssetStorage<A>>();
     let asset = assets.get(&handle).unwrap();
     f(asset)

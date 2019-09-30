@@ -6,7 +6,7 @@ use amethyst::{
 };
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Arena {
     pub tiles: Vec<Vec<Tile>>,
 }

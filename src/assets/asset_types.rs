@@ -1,4 +1,4 @@
-use crate::assets::Arenas;
+use crate::assets::{Arena, Arenas};
 use amethyst::{
     assets::{Asset, Format, Handle, RonFormat},
     audio::{OggFormat, Source},
@@ -36,23 +36,38 @@ macro_rules! loadable_asset_types {
     };
 }
 
-loadable_asset_types!(Font: FontAsset, Sound: Source, Arenas: Arenas);
+loadable_asset_types!(Font: FontAsset, Sound: Source, Arenas: Arenas, Arena: Arena);
 
-pub struct AssetData<A, F>
+pub struct AssetData<'f, A, F>
 where
     A: Asset,
     F: Format<A::Data>,
 {
     pub name: &'static str,
-    pub filename: &'static str,
+    pub filename: &'f str,
     pub format: F,
     phantom: PhantomData<A>,
 }
 
+impl<A, F> AssetData<'_, A, F>
+where
+    A: Asset,
+    F: Format<A::Data>,
+{
+    pub fn new<'f>(name: &'static str, filename: &'f str, format: F) -> AssetData<'f, A, F> {
+        AssetData {
+            name,
+            filename,
+            format,
+            phantom: PhantomData,
+        }
+    }
+}
+
 pub struct AssetDatas {
-    pub font_main: AssetData<FontAsset, TtfFormat>,
-    pub sfx_cursor: AssetData<Source, OggFormat>,
-    pub custom_arenas: AssetData<Arenas, RonFormat>,
+    pub font_main: AssetData<'static, FontAsset, TtfFormat>,
+    pub sfx_cursor: AssetData<'static, Source, OggFormat>,
+    pub custom_arenas: AssetData<'static, Arenas, RonFormat>,
 }
 
 pub static ASSET_DATAS: AssetDatas = AssetDatas {
