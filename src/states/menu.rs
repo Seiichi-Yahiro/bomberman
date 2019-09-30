@@ -49,6 +49,11 @@ impl SimpleState for Menu {
         data.world
             .delete_entity(self.arenas_parent_entity.unwrap())
             .expect("Could not delete arenas selection entities!");
+
+        let mut asset_handles = data.world.write_resource::<AssetHandles>();
+        asset_handles.remove(ASSET_DATAS.font_main.name);
+        asset_handles.remove(ASSET_DATAS.sfx_cursor.name);
+        asset_handles.remove(ASSET_DATAS.custom_arenas.name);
     }
 
     fn handle_event(
