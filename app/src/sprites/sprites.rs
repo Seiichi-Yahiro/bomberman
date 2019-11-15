@@ -21,7 +21,7 @@ pub fn load_spritesheet(
 
     let spritesheet: Spritesheet = from_reader(file).unwrap_or_else(|e| {
         panic!(
-            "Faild to parse spritesheet json({}): {}",
+            "Failed to parse spritesheet json({}): {}",
             spritesheet_path.display(),
             e
         )
