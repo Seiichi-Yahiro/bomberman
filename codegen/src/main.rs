@@ -22,7 +22,7 @@ use texture_packer::{
 };
 
 const ASSETS: &str = "codegen/assets/textures/";
-const OUTPUT_ASSETS: &str = "app/assets/textures/";
+const OUTPUT_ASSETS: &str = "app/assets/textures/generated/";
 const OUTPUT_RUST: &str = "app/src/generated/";
 const SPRITE_SHEET: &str = "_sprite_sheet";
 
