@@ -6,7 +6,7 @@ use std::rc::Rc;
 pub struct ArenaView {}
 
 impl View for ArenaView {
-    type RelatedController = crate::arena::ArenaController;
+    type RelatedController = crate::arenas::ArenaController;
 
     fn draw<G>(&self, controller: &Self::RelatedController, c: &Context, g: &mut G)
     where

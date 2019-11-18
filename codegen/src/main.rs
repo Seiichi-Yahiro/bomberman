@@ -37,7 +37,7 @@ fn main() {
     .iter()
     .for_each(|(width, height, name)| {
         mod_rs
-            .write(format!("pub mod {}{};", name, SPRITE_SHEET).as_bytes())
+            .write_all(format!("pub mod {}{};", name, SPRITE_SHEET).as_bytes())
             .unwrap();
         create_spritesheet_files(*width, *height, name);
     });
@@ -141,7 +141,7 @@ fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_f
 
     File::create(OUTPUT_RUST.to_string() + filename + ".rs")
         .unwrap()
-        .write(rust.as_bytes())
+        .write_all(rust.as_bytes())
         .unwrap();
 }
 

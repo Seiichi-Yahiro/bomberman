@@ -9,7 +9,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate sprite;
 
-mod arena;
+mod arenas;
 mod generated;
 mod traits;
 
@@ -38,15 +38,15 @@ fn main() {
     let mut gl = GlGraphics::new(opengl);
 
     let mut arena_controller = {
-        let arena::Arenas(arenas) =
-            arena::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
+        let arenas::Arenas(arenas) =
+            arenas::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
 
-        arena::ArenaController {
+        arenas::ArenaController {
             arena: arenas[0].init(),
             spritesheet: generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet::new(),
         }
     };
-    let arena_view = arena::ArenaView {};
+    let arena_view = arenas::ArenaView {};
 
     while let Some(event) = events.next(&mut window) {
         arena_controller.event(&event);

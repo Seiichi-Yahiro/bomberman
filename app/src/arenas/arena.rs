@@ -1,4 +1,4 @@
-use crate::arena::tile::Tile;
+use crate::arenas::tile::Tile;
 use crate::traits::FromRON;
 use rand::Rng;
 use serde::Deserialize;
@@ -25,9 +25,9 @@ impl Arena {
             .map(|tile| {
                 if let Tile::SoftWallArea(wall_texture_id, ground_texture_id) = tile {
                     return if rng.gen_range(0, 100) <= 60 {
-                        Tile::SoftWall(wall_texture_id.clone())
+                        Tile::SoftWall(wall_texture_id)
                     } else {
-                        Tile::Ground(ground_texture_id.clone())
+                        Tile::Ground(ground_texture_id)
                     };
                 }
 

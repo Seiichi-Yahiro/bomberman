@@ -1,4 +1,4 @@
-use crate::arena::Arena;
+use crate::arenas::Arena;
 use crate::generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet;
 use crate::traits::controller::*;
 
