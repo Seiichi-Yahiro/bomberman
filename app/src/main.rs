@@ -4,10 +4,10 @@ extern crate graphics;
 extern crate image;
 extern crate opengl_graphics;
 extern crate piston;
+extern crate rand;
 extern crate serde;
 extern crate serde_json;
 extern crate sprite;
-extern crate spritesheet_generator;
 
 mod arena;
 mod generated;
@@ -42,7 +42,7 @@ fn main() {
             arena::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
 
         arena::ArenaController {
-            arena: arenas[0].clone(),
+            arena: arenas[0].init(),
             spritesheet: generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet::new(),
         }
     };
