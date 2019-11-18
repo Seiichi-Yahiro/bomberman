@@ -8,5 +8,5 @@ pub struct ArenaController {
 }
 
 impl Controller for ArenaController {
-    fn event<E: GenericEvent>(&mut self, event: &E) {}
+    fn event<E: GenericEvent>(&mut self, _event: &E) {}
 }

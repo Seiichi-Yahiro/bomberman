@@ -7,10 +7,10 @@ pub struct Arenas(pub Vec<Arena>);
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Arena {
-    name: String,
-    width: u8,
-    height: u8,
-    tiles: Vec<Tile>,
+    pub name: String,
+    pub width: u8,
+    pub height: u8,
+    pub tiles: Vec<Tile>,
 }
 
 impl FromRON for Arenas {}
