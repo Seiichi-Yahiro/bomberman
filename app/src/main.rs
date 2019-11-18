@@ -6,15 +6,13 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate serde;
 extern crate serde_json;
-//extern crate sprite;
+extern crate sprite;
 extern crate spritesheet_generator;
 
 mod arena;
 mod generated;
-mod sprites;
 mod traits;
 
-use sprites::load_spritesheet;
 use std::path::Path;
 use traits::controller::*;
 use traits::view::*;
@@ -39,17 +37,14 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
     let mut gl = GlGraphics::new(opengl);
 
-    /*let sheet = load_spritesheet(
-        Path::new("app/assets/textures/sprite_sheet.png"),
-        Path::new("app/assets/textures/sprite_sheet.json"),
-    );*/
+    let mut arena_controller = {
+        let arena::Arenas(arenas) =
+            arena::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
 
-    let player = generated::player_sprite_sheet::PlayerSpriteSheet::new();
-
-    let arena::Arenas(arenas) =
-        arena::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
-    let mut arena_controller = arena::ArenaController {
-        arena: arenas[0].clone(),
+        arena::ArenaController {
+            arena: arenas[0].clone(),
+            spritesheet: generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet::new(),
+        }
     };
     let arena_view = arena::ArenaView {};
 

@@ -84,9 +84,9 @@ fn create_spritesheet<T: Texture<Pixel = Rgba<u8>>>(folder: &str, texture: &T) {
 fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_folder: &str) {
     let rust = {
         let struct_name = filename[0..1].to_uppercase() + &filename[1..].to_camel_case();
-        let mut struct_def = String::from("pub texture: Texture,");
+        let mut struct_def = String::from("pub texture: Rc<Texture>,");
         let mut struct_init = format!(
-            "texture: Texture::from_path(\"{}\", &TextureSettings::new()).unwrap(),",
+            "texture: Rc::new(Texture::from_path(\"{}\", &TextureSettings::new()).unwrap()),",
             asset_output_folder
         );
         for (name, frame) in frames {
@@ -101,6 +101,7 @@ fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_f
         format!(
             "use graphics::types::SourceRectangle;
             use opengl_graphics::{{Texture, TextureSettings}};
+            use std::rc::Rc;
 
             pub struct {struct_name} {{
                 {struct_def}

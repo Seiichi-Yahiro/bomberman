@@ -9,6 +9,7 @@ pub mod controller {
 pub mod view {
     pub use super::controller::*;
     pub use graphics::{Context, Graphics};
+    pub use opengl_graphics::Texture;
 
     pub trait View {
         type RelatedController;
@@ -16,6 +17,6 @@ pub mod view {
         fn draw<G>(&self, controller: &Self::RelatedController, c: &Context, g: &mut G)
         where
             Self::RelatedController: Controller,
-            G: Graphics;
+            G: Graphics<Texture = Texture>;
     }
 }
