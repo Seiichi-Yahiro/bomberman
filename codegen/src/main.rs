@@ -89,11 +89,19 @@ fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_f
             "texture: Rc::new(Texture::from_path(\"{}\", &TextureSettings::new()).unwrap()),",
             asset_output_folder
         );
+        let mut rects_insert = String::new();
+
         for (name, frame) in frames {
-            struct_def.push_str(&format!("pub {}:SourceRectangle,", name));
+            struct_def.push_str(&format!("pub {}: Rc<SourceRectangle>,", name));
+
+            let value = format!(
+                "[{}.0,{}.0,{}.0,{}.0]",
+                frame.frame.x, frame.frame.y, frame.frame.w, frame.frame.h
+            );
+            rects_insert.push_str(&format!("map.insert(\"{}\", Rc::new({}));", name, value));
             struct_init.push_str(&format!(
-                "{}:[{}.0,{}.0,{}.0,{}.0],",
-                name, frame.frame.x, frame.frame.y, frame.frame.w, frame.frame.h
+                "{name}: rects.get(\"{name}\").unwrap().clone(),",
+                name = name
             ));
         }
 
@@ -102,19 +110,32 @@ fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_f
             "use graphics::types::SourceRectangle;
             use opengl_graphics::{{Texture, TextureSettings}};
             use std::rc::Rc;
+            use std::collections::HashMap;
 
             pub struct {struct_name} {{
                 {struct_def}
+                rects: HashMap<&'static str, Rc<SourceRectangle>>,
             }}
 
             impl {struct_name} {{
                 pub fn new() -> {struct_name} {{
+                    let rects = {{
+                        let mut map = HashMap::<&'static str, Rc<SourceRectangle>>::new();
+                        {rects_insert}
+                        map
+                    }};
+
                     {struct_name} {{
                         {struct_init}
+                        rects,
                     }}
                 }}
+
+                pub fn get(&self, key: &str) -> &SourceRectangle {{
+                    self.rects.get(key).unwrap()
+                }}
             }}",
-            struct_name=struct_name, struct_def=struct_def, struct_init=struct_init
+            struct_name=struct_name, struct_def=struct_def, struct_init=struct_init, rects_insert=rects_insert
         )
     };
 
