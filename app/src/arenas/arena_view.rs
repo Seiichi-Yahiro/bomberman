@@ -5,6 +5,12 @@ use std::rc::Rc;
 
 pub struct ArenaView {}
 
+impl ArenaView {
+    pub fn new() -> ArenaView {
+        ArenaView {}
+    }
+}
+
 impl View for ArenaView {
     type RelatedController = crate::arenas::ArenaController;
 

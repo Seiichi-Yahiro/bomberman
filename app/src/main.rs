@@ -10,13 +10,9 @@ extern crate serde_json;
 extern crate sprite;
 
 mod arenas;
+mod game_states;
 mod generated;
 mod traits;
-
-use std::path::Path;
-use traits::controller::*;
-use traits::view::*;
-use traits::FromRON;
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -30,32 +26,32 @@ fn main() {
 
     let mut window: Window = WindowSettings::new("Bomberman", [width, height])
         .graphics_api(opengl)
-        .exit_on_esc(true)
+        .exit_on_esc(false)
         .build()
         .unwrap_or_else(|e| panic!("Failed to build Window: {}", e));
 
     let mut events = Events::new(EventSettings::new());
     let mut gl = GlGraphics::new(opengl);
 
-    let mut arena_controller = {
-        let arenas::Arenas(arenas) =
-            arenas::Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
-
-        arenas::ArenaController {
-            arena: arenas[0].init(),
-            spritesheet: generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet::new(),
-        }
-    };
-    let arena_view = arenas::ArenaView {};
+    let mut state_manager =
+        game_states::state::StateManager::new(Box::new(game_states::play_state::PlayState::new()));
 
     while let Some(event) = events.next(&mut window) {
-        arena_controller.event(&event);
+        state_manager.event(&event);
+
+        if let Some(update_args) = event.update_args() {
+            state_manager.update(update_args.dt);
+        }
 
         if let Some(render_args) = event.render_args() {
             gl.draw(render_args.viewport(), |c, g| {
                 graphics::clear([1.0; 4], g);
-                arena_view.draw(&arena_controller, &c, g);
+                state_manager.draw(&c, g);
             })
+        }
+
+        if state_manager.is_empty() {
+            break;
         }
     }
 }
