@@ -112,11 +112,13 @@ fn create_struct(frames: &HashMap<String, Frame>, filename: &str, asset_output_f
             use std::rc::Rc;
             use std::collections::HashMap;
 
+            #[allow(dead_code)]
             pub struct {struct_name} {{
                 {struct_def}
                 rects: HashMap<&'static str, Rc<SourceRectangle>>,
             }}
 
+            #[allow(dead_code)]
             impl {struct_name} {{
                 pub fn new() -> {struct_name} {{
                     let rects = {{
