@@ -1,4 +1,3 @@
-use crate::generated::player_sprite_sheet::PlayerSpriteSheet;
 use crate::players::Player;
 use crate::traits::game_loop_event::*;
 use graphics::math::{add, Vec2d};
@@ -16,7 +15,7 @@ impl PlayerManager {
     pub fn new(player_spawns: Vec<Vec2d>) -> PlayerManager {
         PlayerManager {
             player: Player {
-                spritesheet: PlayerSpriteSheet::new(),
+                //spritesheet: PlayerSpriteSheet::new(),
                 position: player_spawns[0],
             },
             direction_key: None,
@@ -58,7 +57,7 @@ impl GameLoopEvent<()> for PlayerManager {
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        let mut sprite = {
+        /*let mut sprite = {
             let texture = Rc::clone(&self.player.spritesheet.texture);
             let rect = *self.player.spritesheet.bomber_down_standing;
             Sprite::from_texture_rect(texture, rect)
@@ -71,6 +70,6 @@ impl GameLoopEvent<()> for PlayerManager {
             c.transform.trans(x, y)
         };
 
-        sprite.draw(transform, g);
+        sprite.draw(transform, g);*/
     }
 }

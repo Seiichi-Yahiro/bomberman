@@ -1,6 +1,3 @@
-use serde::Deserialize;
-
-#[derive(Deserialize, Debug, Clone)]
 pub enum Tile {
     Ground(String),
     Wall(String),

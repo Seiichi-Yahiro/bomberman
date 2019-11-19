@@ -5,14 +5,13 @@ extern crate image;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
-extern crate serde;
 extern crate sprite;
+extern crate tiled;
 
 mod arenas;
 mod game_states;
-mod generated;
-mod traits;
 mod players;
+mod traits;
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -36,6 +35,9 @@ fn main() {
 
     let mut state_manager =
         game_states::state::StateManager::new(Box::new(game_states::play_state::PlayState::new()));
+
+    let tilemap =
+        tiled::parse_file(std::path::Path::new("app/assets/arenas/arena_classic.tmx")).unwrap();
 
     while let Some(event) = events.next(&mut window) {
         state_manager.event(&event);

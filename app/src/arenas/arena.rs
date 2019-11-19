@@ -1,13 +1,9 @@
 use crate::arenas::tile::Tile;
-use crate::traits::FromRON;
 use graphics::math::Vec2d;
 use rand::Rng;
-use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
 pub struct Arenas(pub Vec<Arena>);
 
-#[derive(Deserialize, Debug, Clone)]
 pub struct Arena {
     pub name: String,
     pub width: u8,
@@ -16,7 +12,7 @@ pub struct Arena {
 }
 
 impl Arena {
-    pub fn init(&self) -> Arena {
+    /*pub fn init(&self) -> Arena {
         let mut arena = self.clone();
         let mut rng = rand::thread_rng();
 
@@ -36,7 +32,7 @@ impl Arena {
             })
             .collect();
         arena
-    }
+    }*/
 
     pub fn get_player_spawns(&self) -> Vec<Vec2d> {
         self.tiles
@@ -57,5 +53,3 @@ impl Arena {
             .collect()
     }
 }
-
-impl FromRON for Arenas {}

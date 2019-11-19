@@ -8,5 +8,3 @@ thumbs.db
 *~
 *.rs.bk
 *.swp
-
-**/generated/**

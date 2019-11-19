@@ -11,7 +11,6 @@ pistoncore-glutin_window = "0.63.0"
 piston2d-opengl_graphics = "0.69.0"
 piston2d-sprite = "0.58.0"
 piston-ai_behavior = "0.31.0"
-ron = "0.5.1"
-serde = { version = "1.0.99", features = ["derive"] }
 image = "0.22.3"
 rand = "0.7.2"
+tiled = "0.7.4"
