@@ -6,7 +6,7 @@ pub enum Tile {
     Wall(String),
     SoftWall(String),
     SoftWallArea(String, String),
-    PlayerStart(String),
+    PlayerSpawn(String),
 }
 
 impl Tile {
@@ -16,7 +16,7 @@ impl Tile {
             Tile::Wall(texture_id) => texture_id,
             Tile::SoftWall(texture_id) => texture_id,
             Tile::SoftWallArea(_wall_texture_id, ground_texture_id) => ground_texture_id,
-            Tile::PlayerStart(texture_id) => texture_id,
+            Tile::PlayerSpawn(texture_id) => texture_id,
         }
     }
 }

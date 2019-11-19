@@ -12,6 +12,7 @@ mod arenas;
 mod game_states;
 mod generated;
 mod traits;
+mod players;
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
