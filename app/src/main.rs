@@ -6,7 +6,6 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
 extern crate serde;
-extern crate serde_json;
 extern crate sprite;
 
 mod arenas;
