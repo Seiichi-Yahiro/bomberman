@@ -39,6 +39,7 @@ impl PlayState {
 impl GameLoopEvent<StateStackEvent> for PlayState {
     fn event(&mut self, event: &Event) -> StateStackEvent {
         self.arena_manager.event(event);
+        self.player_manager.event(event);
 
         if let Some(Button::Keyboard(Key::Escape)) = event.press_args() {
             return StateStackEvent(StateTransition::Clear, false);
@@ -47,7 +48,9 @@ impl GameLoopEvent<StateStackEvent> for PlayState {
         StateStackEvent(StateTransition::None, true)
     }
 
-    fn update(&mut self, _dt: f64) -> StateStackEvent {
+    fn update(&mut self, dt: f64) -> StateStackEvent {
+        self.arena_manager.update(dt);
+        self.player_manager.update(dt);
         StateStackEvent(StateTransition::None, true)
     }
 
