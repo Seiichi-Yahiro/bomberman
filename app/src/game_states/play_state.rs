@@ -1,39 +1,34 @@
-use crate::arenas::{ArenaController, ArenaView, Arenas};
+use crate::arenas::{ArenaManager, Arenas};
 use crate::game_states::state::*;
 use crate::generated::arena_tiles_sprite_sheet::ArenaTilesSpriteSheet;
-use crate::traits::controller::Controller;
-use crate::traits::view::View;
+use crate::traits::game_loop_event::*;
 use crate::traits::FromRON;
 use piston::input::*;
 use std::path::Path;
 
 pub struct PlayState {
-    arena_controller: ArenaController,
-    arena_view: ArenaView,
+    arena_manager: ArenaManager,
 }
 
 impl PlayState {
     pub fn new() -> PlayState {
-        let arena_controller = {
+        let arena_manager = {
             let Arenas(arenas) =
                 Arenas::load_from_ron_file(Path::new("app/assets/arenas/arenas.ron"));
 
-            ArenaController {
+            ArenaManager {
                 arena: arenas[0].init(),
                 spritesheet: ArenaTilesSpriteSheet::new(),
             }
         };
 
-        PlayState {
-            arena_controller,
-            arena_view: ArenaView::new(),
-        }
+        PlayState { arena_manager }
     }
 }
 
-impl State for PlayState {
+impl GameLoopEvent<StateStackEvent> for PlayState {
     fn event(&mut self, event: &Event) -> StateStackEvent {
-        self.arena_controller.event(event);
+        self.arena_manager.event(event);
 
         if let Some(Button::Keyboard(Key::Escape)) = event.press_args() {
             return StateStackEvent(StateTransition::Clear, false);
@@ -42,11 +37,11 @@ impl State for PlayState {
         StateStackEvent(StateTransition::None, true)
     }
 
-    fn update(&mut self, dt: f64) -> StateStackEvent {
+    fn update(&mut self, _dt: f64) -> StateStackEvent {
         StateStackEvent(StateTransition::None, true)
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.arena_view.draw(&self.arena_controller, c, g);
+        self.arena_manager.draw(c, g);
     }
 }

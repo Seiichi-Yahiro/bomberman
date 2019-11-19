@@ -18,6 +18,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
+use traits::game_loop_event::GameLoopEvent;
 
 fn main() {
     let opengl = OpenGL::V4_5;

@@ -1,36 +1,28 @@
-pub use graphics::{Context, Graphics};
-pub use opengl_graphics::{GlGraphics, Texture};
-pub use piston::input::Event;
+use crate::traits::game_loop_event::*;
 
 pub enum StateTransition {
-    Push(Box<dyn State>),
+    Push(Box<dyn GameLoopEvent<StateStackEvent>>),
     Pop,
-    Switch(Box<dyn State>),
+    Switch(Box<dyn GameLoopEvent<StateStackEvent>>),
     Clear,
     None,
 }
 
 pub struct StateStackEvent(pub StateTransition, pub bool);
 
-pub trait State {
-    fn event(&mut self, event: &Event) -> StateStackEvent {
+impl Default for StateStackEvent {
+    fn default() -> Self {
         StateStackEvent(StateTransition::None, true)
     }
-
-    fn update(&mut self, dt: f64) -> StateStackEvent {
-        StateStackEvent(StateTransition::None, true)
-    }
-
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {}
 }
 
 pub struct StateManager {
-    stack: Vec<Box<dyn State>>,
+    stack: Vec<Box<dyn GameLoopEvent<StateStackEvent>>>,
     pending_transitions: Vec<StateTransition>,
 }
 
 impl StateManager {
-    pub fn new(state: Box<dyn State>) -> StateManager {
+    pub fn new(state: Box<dyn GameLoopEvent<StateStackEvent>>) -> StateManager {
         StateManager {
             stack: vec![state],
             pending_transitions: Vec::new(),
@@ -39,38 +31,6 @@ impl StateManager {
 
     pub fn is_empty(&self) -> bool {
         self.stack.is_empty()
-    }
-
-    pub fn event(&mut self, event: &Event) {
-        for state in self.stack.iter_mut().rev() {
-            let StateStackEvent(transition, should_pass_down) = state.event(event);
-            self.pending_transitions.push(transition);
-
-            if !should_pass_down {
-                break;
-            }
-        }
-
-        self.apply_pending_transitions();
-    }
-
-    pub fn update(&mut self, dt: f64) {
-        for state in self.stack.iter_mut().rev() {
-            let StateStackEvent(transition, should_pass_down) = state.update(dt);
-            self.pending_transitions.push(transition);
-
-            if !should_pass_down {
-                break;
-            }
-        }
-
-        self.apply_pending_transitions();
-    }
-
-    pub fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        for state in self.stack.iter() {
-            state.draw(c, g);
-        }
     }
 
     fn apply_pending_transitions(&mut self) {
@@ -93,6 +53,40 @@ impl StateManager {
                 }
                 StateTransition::None => {}
             }
+        }
+    }
+}
+
+impl GameLoopEvent<()> for StateManager {
+    fn event(&mut self, event: &Event) {
+        for state in self.stack.iter_mut().rev() {
+            let StateStackEvent(transition, should_pass_down) = state.event(event);
+            self.pending_transitions.push(transition);
+
+            if !should_pass_down {
+                break;
+            }
+        }
+
+        self.apply_pending_transitions();
+    }
+
+    fn update(&mut self, dt: f64) {
+        for state in self.stack.iter_mut().rev() {
+            let StateStackEvent(transition, should_pass_down) = state.update(dt);
+            self.pending_transitions.push(transition);
+
+            if !should_pass_down {
+                break;
+            }
+        }
+
+        self.apply_pending_transitions();
+    }
+
+    fn draw(&self, c: &Context, g: &mut GlGraphics) {
+        for state in self.stack.iter() {
+            state.draw(c, g);
         }
     }
 }

@@ -1,5 +1,4 @@
 mod from_ron;
-mod mvc;
+pub mod game_loop_event;
 
 pub use from_ron::FromRON;
-pub use mvc::{controller, view};
