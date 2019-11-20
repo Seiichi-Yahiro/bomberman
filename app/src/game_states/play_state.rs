@@ -1,4 +1,4 @@
-use crate::arenas::{ArenaManager, Arenas};
+use crate::arenas::ArenaManager;
 use crate::game_states::state::*;
 use crate::players::PlayerManager;
 use crate::traits::game_loop_event::*;

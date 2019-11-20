@@ -1,7 +1,4 @@
-mod arena;
 mod arena_manager;
-mod tile;
+pub mod object_groups;
 
-pub use arena::{Arena, Arenas};
 pub use arena_manager::ArenaManager;
-pub use tile::Tile;
