@@ -8,6 +8,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 const ARENAS_FOLDER: &str = "app/assets/arenas/";
+const TEXTURE_FOLDER: &str = "app/assets/textures/arena_tiles/";
 const FILE_NAME: &str = "arena_classic.tmx";
 
 struct ArenaTile(pub u32, pub u32, pub u32); // x, y, tile_id
@@ -37,7 +38,7 @@ impl ArenaManager {
             .tiles
             .iter()
             .map(|tile| {
-                let path = format!("{}{}", ARENAS_FOLDER, tile.images.first().unwrap().source);
+                let path = format!("{}{}", TEXTURE_FOLDER, tile.images.first().unwrap().source);
                 let texture_settings = TextureSettings::new();
                 let texture = Texture::from_path(path, &texture_settings).unwrap();
                 (tile.id, Rc::new(texture))
