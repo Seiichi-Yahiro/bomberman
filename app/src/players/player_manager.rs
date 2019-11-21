@@ -13,7 +13,7 @@ const TILE_SET_NAME: &str = "player_tiles.xml";
 
 pub struct PlayerManager {
     player: Player,
-    direction_key: Option<Key>,
+    key_manager: HashMap<Key, bool>,
 }
 
 impl PlayerManager {
@@ -29,7 +29,7 @@ impl PlayerManager {
                 texture: load_tileset_textures(&tileset, TEXTURE_FOLDER),
                 position: player_spawns[&0],
             },
-            direction_key: None,
+            key_manager: HashMap::new(),
         }
     }
 }
@@ -37,34 +37,35 @@ impl PlayerManager {
 impl GameLoopEvent<()> for PlayerManager {
     fn event(&mut self, event: &Event) {
         if let Some(Button::Keyboard(key)) = event.press_args() {
-            match key {
-                Key::Right | Key::Left | Key::Up | Key::Down => {
-                    self.direction_key = Some(key);
-                }
-                _ => {}
-            }
+            self.key_manager.insert(key, true);
         } else if let Some(Button::Keyboard(key)) = event.release_args() {
-            match key {
-                Key::Right | Key::Left | Key::Up | Key::Down => {
-                    self.direction_key = None;
-                }
-                _ => {}
-            }
+            self.key_manager.insert(key, false);
         }
     }
 
     fn update(&mut self, dt: f64) {
-        if let Some(key) = self.direction_key {
-            let speed = 32.0;
+        let speed = 32.0 * dt;
+        let fallback_is_key_pressed = false;
+        let mut velocity = [0.0, 0.0];
 
-            self.player.position = match key {
-                Key::Right => add(self.player.position, [speed * dt, 0.0]),
-                Key::Left => add(self.player.position, [-speed * dt, 0.0]),
-                Key::Up => add(self.player.position, [0.0, -speed * dt]),
-                Key::Down => add(self.player.position, [0.0, speed * dt]),
-                _ => self.player.position,
+        [
+            (Key::Right, 0, speed),
+            (Key::Left, 0, -speed),
+            (Key::Up, 1, -speed),
+            (Key::Down, 1, speed),
+        ]
+        .iter()
+        .for_each(|(key, direction, speed)| {
+            if *self
+                .key_manager
+                .get(key)
+                .unwrap_or(&fallback_is_key_pressed)
+            {
+                velocity[*direction] += *speed;
             }
-        }
+        });
+
+        self.player.position = add(self.player.position, velocity);
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
