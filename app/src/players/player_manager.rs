@@ -8,6 +8,9 @@ use sprite::Sprite;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
+const TILE_SET_NAME: &str = "player_tiles.xml";
+
 pub struct PlayerManager {
     player: Player,
     direction_key: Option<Key>,
@@ -16,14 +19,14 @@ pub struct PlayerManager {
 impl PlayerManager {
     pub fn new(player_spawns: HashMap<i32, Vec2d>) -> PlayerManager {
         let tileset = tiled::parse_tileset(
-            std::fs::File::open("app/assets/textures/player/player_tiles.xml").unwrap(),
+            std::fs::File::open(format!("{}{}", TEXTURE_FOLDER, TILE_SET_NAME)).unwrap(),
             1,
         )
         .unwrap();
 
         PlayerManager {
             player: Player {
-                texture: load_tileset_textures(&tileset, "app/assets/textures/player/"),
+                texture: load_tileset_textures(&tileset, TEXTURE_FOLDER),
                 position: player_spawns[&0],
             },
             direction_key: None,
