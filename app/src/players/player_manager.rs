@@ -1,9 +1,11 @@
 use crate::players::Player;
 use crate::traits::game_loop_event::*;
+use crate::utils::load_tileset_textures;
 use graphics::math::{add, Vec2d};
 use graphics::Transformed;
 use piston::input::*;
 use sprite::Sprite;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct PlayerManager {
@@ -12,11 +14,17 @@ pub struct PlayerManager {
 }
 
 impl PlayerManager {
-    pub fn new(player_spawns: Vec<Vec2d>) -> PlayerManager {
+    pub fn new(player_spawns: HashMap<i32, Vec2d>) -> PlayerManager {
+        let tileset = tiled::parse_tileset(
+            std::fs::File::open("app/assets/textures/player/player_tiles.xml").unwrap(),
+            1,
+        )
+        .unwrap();
+
         PlayerManager {
             player: Player {
-                //spritesheet: PlayerSpriteSheet::new(),
-                position: player_spawns[0],
+                texture: load_tileset_textures(&tileset, "app/assets/textures/player/"),
+                position: player_spawns[&0],
             },
             direction_key: None,
         }
@@ -57,10 +65,9 @@ impl GameLoopEvent<()> for PlayerManager {
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        /*let mut sprite = {
-            let texture = Rc::clone(&self.player.spritesheet.texture);
-            let rect = *self.player.spritesheet.bomber_down_standing;
-            Sprite::from_texture_rect(texture, rect)
+        let mut sprite = {
+            let texture = Rc::clone(&self.player.texture[&2]);
+            Sprite::from_texture(texture)
         };
 
         sprite.set_anchor(0.0, 0.0);
@@ -70,6 +77,6 @@ impl GameLoopEvent<()> for PlayerManager {
             c.transform.trans(x, y)
         };
 
-        sprite.draw(transform, g);*/
+        sprite.draw(transform, g);
     }
 }

@@ -1,5 +1,7 @@
 use crate::arenas::object_groups;
 use crate::traits::game_loop_event::*;
+use crate::utils::{load_tileset_textures, TextureMap};
+use graphics::math::Vec2d;
 use graphics::Transformed;
 use opengl_graphics::{Texture, TextureSettings};
 use sprite::Sprite;
@@ -13,9 +15,9 @@ const FILE_NAME: &str = "arena_classic.tmx";
 
 struct ArenaTile(pub u32, pub u32, pub u32); // x, y, tile_id
 type SoftBlockAreas<'a> = HashMap<[u32; 2], &'a tiled::Object>;
-type TextureMap = HashMap<u32, Rc<Texture>>;
 
 pub struct ArenaManager {
+    tile_map: tiled::Map,
     arena_tiles: Vec<ArenaTile>,
     textures: TextureMap,
 }
@@ -29,21 +31,9 @@ impl ArenaManager {
 
         ArenaManager {
             arena_tiles: Self::init_arena_tiles(&tile_map),
-            textures: Self::load_textures(&tile_map),
+            textures: load_tileset_textures(&tile_map.tilesets[0], TEXTURE_FOLDER),
+            tile_map,
         }
-    }
-
-    fn load_textures(tile_map: &tiled::Map) -> TextureMap {
-        tile_map.tilesets[0]
-            .tiles
-            .iter()
-            .map(|tile| {
-                let path = format!("{}{}", TEXTURE_FOLDER, tile.images.first().unwrap().source);
-                let texture_settings = TextureSettings::new();
-                let texture = Texture::from_path(path, &texture_settings).unwrap();
-                (tile.id, Rc::new(texture))
-            })
-            .collect()
     }
 
     fn init_arena_tiles(tile_map: &tiled::Map) -> Vec<ArenaTile> {
@@ -71,6 +61,30 @@ impl ArenaManager {
                         ArenaTile(x, y, tile - 1)
                     })
                     .collect::<Vec<ArenaTile>>()
+            })
+            .collect()
+    }
+
+    pub fn get_player_spawns(&self) -> HashMap<i32, Vec2d> {
+        self.tile_map
+            .object_groups
+            .iter()
+            .filter(|group| group.name == object_groups::player_spawns::NAME)
+            .flat_map(|group| &group.objects)
+            .map(|object| {
+                if let tiled::PropertyValue::IntValue(player_id) =
+                    object.properties[object_groups::player_spawns::properties::PLAYER_ID]
+                {
+                    return (
+                        player_id,
+                        [
+                            object.x as f64,
+                            object.y as f64 - self.tile_map.tile_height as f64, // subtract tile_height as tiled origin is bottom left
+                        ],
+                    );
+                }
+
+                panic!("No player spawns found!");
             })
             .collect()
     }
