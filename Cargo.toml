@@ -1,2 +1,2 @@
 [workspace]
-members = ["app", "codegen"]
+members = ["app"]
