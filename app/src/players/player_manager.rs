@@ -13,7 +13,6 @@ const TILE_SET_NAME: &str = "player_tiles.xml";
 
 pub struct PlayerManager {
     player: Player,
-    key_manager: HashMap<Key, bool>,
 }
 
 impl PlayerManager {
@@ -29,22 +28,15 @@ impl PlayerManager {
                 texture: load_tileset_textures(&tileset, TEXTURE_FOLDER),
                 position: player_spawns[&0],
             },
-            key_manager: HashMap::new(),
         }
     }
 }
 
 impl GameLoopEvent<()> for PlayerManager {
-    fn event(&mut self, event: &Event) {
-        if let Some(Button::Keyboard(key)) = event.press_args() {
-            self.key_manager.insert(key, true);
-        } else if let Some(Button::Keyboard(key)) = event.release_args() {
-            self.key_manager.insert(key, false);
-        }
-    }
+    fn event(&mut self, _event: &Event) {}
 
-    fn update(&mut self, dt: f64) {
-        let speed = 32.0 * dt;
+    fn update(&mut self, update_args: &GameLoopUpdateArgs) {
+        let speed = 32.0 * update_args.dt;
         let fallback_is_key_pressed = false;
         let mut velocity = [0.0, 0.0];
 
@@ -56,8 +48,8 @@ impl GameLoopEvent<()> for PlayerManager {
         ]
         .iter()
         .for_each(|(key, direction, speed)| {
-            if *self
-                .key_manager
+            if *update_args
+                .key_state
                 .get(key)
                 .unwrap_or(&fallback_is_key_pressed)
             {

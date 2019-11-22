@@ -3,7 +3,6 @@ use crate::traits::game_loop_event::*;
 use crate::utils::{load_tileset_textures, TextureMap};
 use graphics::math::Vec2d;
 use graphics::Transformed;
-use opengl_graphics::{Texture, TextureSettings};
 use sprite::Sprite;
 use std::collections::HashMap;
 use std::path::Path;

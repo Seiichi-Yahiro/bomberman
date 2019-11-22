@@ -19,7 +19,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
-use traits::game_loop_event::GameLoopEvent;
+use traits::game_loop_event::*;
 
 fn main() {
     let opengl = OpenGL::V4_5;
@@ -36,12 +36,23 @@ fn main() {
 
     let mut state_manager =
         game_states::state::StateManager::new(Box::new(game_states::play_state::PlayState::new()));
+    let mut key_state = KeyState::new();
 
     while let Some(event) = events.next(&mut window) {
+        if let Some(Button::Keyboard(key)) = event.press_args() {
+            key_state.insert(key, true);
+        } else if let Some(Button::Keyboard(key)) = event.release_args() {
+            key_state.insert(key, false);
+        }
+
         state_manager.event(&event);
 
         if let Some(update_args) = event.update_args() {
-            state_manager.update(update_args.dt);
+            let game_loop_update_args = GameLoopUpdateArgs {
+                dt: update_args.dt,
+                key_state: &key_state,
+            };
+            state_manager.update(&game_loop_update_args);
         }
 
         if let Some(render_args) = event.render_args() {

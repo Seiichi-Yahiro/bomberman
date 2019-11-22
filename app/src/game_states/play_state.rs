@@ -32,9 +32,9 @@ impl GameLoopEvent<StateStackEvent> for PlayState {
         StateStackEvent(StateTransition::None, true)
     }
 
-    fn update(&mut self, dt: f64) -> StateStackEvent {
-        self.arena_manager.update(dt);
-        self.player_manager.update(dt);
+    fn update(&mut self, update_args: &GameLoopUpdateArgs) -> StateStackEvent {
+        self.arena_manager.update(update_args);
+        self.player_manager.update(update_args);
         StateStackEvent(StateTransition::None, true)
     }
 
