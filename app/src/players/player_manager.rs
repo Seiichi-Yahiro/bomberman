@@ -37,7 +37,6 @@ impl GameLoopEvent<()> for PlayerManager {
 
     fn update(&mut self, update_args: &GameLoopUpdateArgs) {
         let speed = 32.0 * update_args.dt;
-        let fallback_is_key_pressed = false;
         let mut velocity = [0.0, 0.0];
 
         [
@@ -48,11 +47,7 @@ impl GameLoopEvent<()> for PlayerManager {
         ]
         .iter()
         .for_each(|(key, direction, speed)| {
-            if *update_args
-                .key_state
-                .get(key)
-                .unwrap_or(&fallback_is_key_pressed)
-            {
+            if update_args.key_state.get(key) {
                 velocity[*direction] += *speed;
             }
         });

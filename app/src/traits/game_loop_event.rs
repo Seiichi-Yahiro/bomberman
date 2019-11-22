@@ -4,7 +4,25 @@ pub use piston::input::Event;
 use piston::input::Key;
 use std::collections::HashMap;
 
-pub type KeyState = HashMap<Key, bool>;
+pub struct KeyState {
+    map: HashMap<Key, bool>,
+}
+
+impl KeyState {
+    pub fn new() -> KeyState {
+        KeyState {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, key: Key, val: bool) {
+        self.map.insert(key, val);
+    }
+
+    pub fn get(&self, key: &Key) -> bool {
+        *self.map.get(key).unwrap_or(&false)
+    }
+}
 
 pub struct GameLoopUpdateArgs<'a> {
     pub dt: f64,
