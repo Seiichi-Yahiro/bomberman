@@ -66,7 +66,7 @@ impl PlayerManager {
                     .spritesheet
                     .set_current_texture(TextureNames::StandingLeft.as_str());
             }
-        } else if vy.abs() >= vx.abs() {
+        } else if vy.abs() > vx.abs() {
             if vy > 0.0 {
                 self.player
                     .spritesheet
@@ -76,6 +76,12 @@ impl PlayerManager {
                     .spritesheet
                     .set_current_texture(TextureNames::StandingUp.as_str());
             }
+        }
+
+        if vx == 0.0 && vy == 0.0 {
+            self.player.spritesheet.stop_animation();
+        } else if !self.player.spritesheet.is_animating {
+            self.player.spritesheet.start_animation();
         }
     }
 }
@@ -87,6 +93,7 @@ impl GameLoopEvent<()> for PlayerManager {
         self.update_player_speed(update_args);
         self.update_player_texture();
         self.player.position = add(self.player.position, self.player.speed);
+        self.player.spritesheet.update_animation(update_args.dt);
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
