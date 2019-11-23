@@ -1,4 +1,4 @@
-use crate::players::{texture_names, Player};
+use crate::players::{Player, TextureNames};
 use crate::traits::game_loop_event::*;
 use crate::utils::Spritesheet;
 use graphics::math::{add, Vec2d};
@@ -21,7 +21,7 @@ impl PlayerManager {
                 spritesheet: Spritesheet::new(
                     TEXTURE_FOLDER,
                     TILE_SET_NAME,
-                    texture_names::PLAYER_STANDING_DOWN,
+                    TextureNames::StandingDown.as_str(),
                 ),
                 position: player_spawns[&0],
                 speed: [0.0; 2],
@@ -50,8 +50,7 @@ impl PlayerManager {
             vy += -speed;
         }
 
-        let new_speed = [vx, vy];
-        self.player.speed = new_speed;
+        self.player.speed = [vx, vy];
     }
 
     fn update_player_texture(&mut self) {
@@ -61,21 +60,21 @@ impl PlayerManager {
             if vx > 0.0 {
                 self.player
                     .spritesheet
-                    .set_current_texture(texture_names::PLAYER_STANDING_RIGHT);
+                    .set_current_texture(TextureNames::StandingRight.as_str());
             } else if vx < 0.0 {
                 self.player
                     .spritesheet
-                    .set_current_texture(texture_names::PLAYER_STANDING_LEFT);
+                    .set_current_texture(TextureNames::StandingLeft.as_str());
             }
         } else if vy.abs() >= vx.abs() {
             if vy > 0.0 {
                 self.player
                     .spritesheet
-                    .set_current_texture(texture_names::PLAYER_STANDING_DOWN);
+                    .set_current_texture(TextureNames::StandingDown.as_str());
             } else if vy < 0.0 {
                 self.player
                     .spritesheet
-                    .set_current_texture(texture_names::PLAYER_STANDING_UP);
+                    .set_current_texture(TextureNames::StandingUp.as_str());
             }
         }
     }

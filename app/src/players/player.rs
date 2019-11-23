@@ -1,11 +1,22 @@
 use crate::utils::Spritesheet;
 use graphics::math::Vec2d;
 
-pub mod texture_names {
-    pub const PLAYER_STANDING_DOWN: &str = "player_standing_down";
-    pub const PLAYER_STANDING_UP: &str = "player_standing_up";
-    pub const PLAYER_STANDING_LEFT: &str = "player_standing_left";
-    pub const PLAYER_STANDING_RIGHT: &str = "player_standing_right";
+pub enum TextureNames {
+    StandingDown,
+    StandingUp,
+    StandingLeft,
+    StandingRight,
+}
+
+impl TextureNames {
+    pub fn as_str(&self) -> &str {
+        match self {
+            TextureNames::StandingDown => "player_standing_down",
+            TextureNames::StandingUp => "player_standing_up",
+            TextureNames::StandingLeft => "player_standing_left",
+            TextureNames::StandingRight => "player_standing_right",
+        }
+    }
 }
 
 pub struct Player {

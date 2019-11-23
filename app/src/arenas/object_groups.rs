@@ -1,15 +1,37 @@
-pub mod soft_block_areas {
-    pub const NAME: &str = "soft_block_areas";
+pub enum ArenaObjectGroup {
+    SoftBlockAreas,
+    PlayerSpawns,
+}
 
-    pub mod properties {
-        pub const SPAWN_CHANCE: &str = "spawn_chance";
+impl ArenaObjectGroup {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ArenaObjectGroup::SoftBlockAreas => "soft_block_areas",
+            ArenaObjectGroup::PlayerSpawns => "player_spawns",
+        }
     }
 }
 
-pub mod player_spawns {
-    pub const NAME: &str = "player_spawns";
+pub enum SoftBlockAreasProperties {
+    SpawnChance,
+}
 
-    pub mod properties {
-        pub const PLAYER_ID: &str = "player_id";
+impl SoftBlockAreasProperties {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SoftBlockAreasProperties::SpawnChance => "spawn_chance",
+        }
+    }
+}
+
+pub enum PlayerSpawnsProperties {
+    PlayerId,
+}
+
+impl PlayerSpawnsProperties {
+    pub fn as_str(&self) -> &str {
+        match self {
+            PlayerSpawnsProperties::PlayerId => "player_id",
+        }
     }
 }

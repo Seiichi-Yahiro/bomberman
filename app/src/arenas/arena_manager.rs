@@ -68,11 +68,11 @@ impl ArenaManager {
         self.tile_map
             .object_groups
             .iter()
-            .filter(|group| group.name == object_groups::player_spawns::NAME)
+            .filter(|group| group.name == object_groups::ArenaObjectGroup::PlayerSpawns.as_str())
             .flat_map(|group| &group.objects)
             .map(|object| {
                 if let tiled::PropertyValue::IntValue(player_id) =
-                    object.properties[object_groups::player_spawns::properties::PLAYER_ID]
+                    object.properties[object_groups::PlayerSpawnsProperties::PlayerId.as_str()]
                 {
                     return (
                         player_id,
@@ -92,7 +92,7 @@ impl ArenaManager {
         tile_map
             .object_groups
             .iter()
-            .filter(|group| group.name == object_groups::soft_block_areas::NAME)
+            .filter(|group| group.name == object_groups::ArenaObjectGroup::SoftBlockAreas.as_str())
             .flat_map(|group| &group.objects)
             .map(|object| {
                 (
@@ -105,7 +105,7 @@ impl ArenaManager {
 
     fn should_spawn_soft_block(soft_block: &tiled::Object) -> bool {
         if let tiled::PropertyValue::FloatValue(spawn_chance) =
-            soft_block.properties[object_groups::soft_block_areas::properties::SPAWN_CHANCE]
+            soft_block.properties[object_groups::SoftBlockAreasProperties::SpawnChance.as_str()]
         {
             return rand::random::<f32>() <= spawn_chance;
         }
