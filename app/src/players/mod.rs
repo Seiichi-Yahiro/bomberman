@@ -1,5 +1,5 @@
 mod player;
 mod player_manager;
 
-pub use player::{Player, TextureNames};
+pub use player::*;
 pub use player_manager::PlayerManager;

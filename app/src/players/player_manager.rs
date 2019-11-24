@@ -1,4 +1,4 @@
-use crate::players::{Player, TextureNames};
+use crate::players::{Player, PlayerId, TextureNames};
 use crate::traits::game_loop_event::*;
 use crate::utils::Spritesheet;
 use graphics::math::{add, Vec2d};
@@ -16,17 +16,14 @@ pub struct PlayerManager {
 
 impl PlayerManager {
     pub fn new(player_spawns: HashMap<i32, Vec2d>) -> PlayerManager {
+        let spritesheet = Spritesheet::new(
+            TEXTURE_FOLDER,
+            TILE_SET_NAME,
+            TextureNames::StandingDown.as_str(),
+        );
+
         PlayerManager {
-            player: Player {
-                spritesheet: Spritesheet::new(
-                    TEXTURE_FOLDER,
-                    TILE_SET_NAME,
-                    TextureNames::StandingDown.as_str(),
-                ),
-                position: player_spawns[&0],
-                speed: [0.0; 2],
-                movement_key_stack: Vec::new(),
-            },
+            player: Player::new(PlayerId::Player1, player_spawns[&0], spritesheet),
         }
     }
 
@@ -80,14 +77,8 @@ impl GameLoopEvent<()> for PlayerManager {
         if let Some(Button::Keyboard(key)) = event.press_args() {
             match key {
                 Key::Up | Key::Down | Key::Right | Key::Left => {
-                    if self
-                        .player
-                        .movement_key_stack
-                        .iter()
-                        .position(|stored_key| *stored_key == key)
-                        .is_none()
-                    {
-                        self.player.movement_key_stack.push(key)
+                    if !self.player.movement_key_stack.contains(&key) {
+                        self.player.movement_key_stack.push(key);
                     }
                 }
                 _ => {}
