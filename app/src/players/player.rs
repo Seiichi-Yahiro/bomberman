@@ -1,5 +1,6 @@
 use crate::utils::Spritesheet;
 use graphics::math::Vec2d;
+use piston::input::Key;
 
 pub enum TextureNames {
     StandingDown,
@@ -23,4 +24,5 @@ pub struct Player {
     pub spritesheet: Spritesheet,
     pub position: Vec2d,
     pub speed: Vec2d,
+    pub movement_key_stack: Vec<Key>,
 }
