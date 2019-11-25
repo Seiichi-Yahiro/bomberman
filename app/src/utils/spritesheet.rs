@@ -93,7 +93,6 @@ impl Spritesheet {
 
                     Some(*state)
                 })
-                .into_iter()
                 .enumerate()
                 .find_map(|(index, duration)| {
                     if self.animation_time < duration {
