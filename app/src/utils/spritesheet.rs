@@ -23,18 +23,21 @@ pub struct Spritesheet {
 impl Spritesheet {
     pub fn new(folder: &str, tileset_file: &str, default_texture: &str) -> Spritesheet {
         let tileset = load_tileset(folder, tileset_file);
+        let textures = load_tileset_textures(&tileset, folder);
         let texture_names_to_ids = Self::map_texture_names_to_ids(&tileset);
         let default_tile_id = texture_names_to_ids[default_texture];
+        let animation = Self::get_animation(&tileset, default_tile_id);
+        let animation_length = Self::calculate_animation_length(&animation);
 
         Spritesheet {
             default_tile_id,
             current_tile_id: default_tile_id,
-            textures: load_tileset_textures(&tileset, folder),
+            textures,
             texture_names_to_ids,
             tileset,
-            animation: None,
+            animation,
             animation_time: 0.0,
-            animation_length: 0.0,
+            animation_length,
             is_animating: false,
         }
     }
@@ -54,22 +57,28 @@ impl Spritesheet {
     }
 
     fn set_animation_data(&mut self) {
-        self.animation = self
-            .tileset
+        self.animation = Self::get_animation(&self.tileset, self.current_tile_id);
+        self.animation_length = Self::calculate_animation_length(&self.animation);
+    }
+
+    fn get_animation(tileset: &tiled::Tileset, current_tile_id: u32) -> Option<Vec<Frame>> {
+        tileset
             .tiles
             .iter()
-            .find(|tile| tile.id == self.current_tile_id)
+            .find(|tile| tile.id == current_tile_id)
             .and_then(|tile| tile.animation.as_ref())
             .map(|frames| {
                 frames
                     .iter()
                     .map(|frame| unsafe { std::mem::transmute(frame.clone()) }) // Transmute to my Frame as tiled::Frame fields were forgotten to be made public...
                     .collect::<Vec<Frame>>()
-            });
+            })
+    }
 
-        self.animation_length = self.animation.as_ref().map_or(0.0, |frames| {
+    fn calculate_animation_length(animation: &Option<Vec<Frame>>) -> f64 {
+        animation.as_ref().map_or(0.0, |frames| {
             frames.iter().map(|frame| frame.duration as f64).sum()
-        });
+        })
     }
 
     pub fn start_animation(&mut self) {
@@ -156,20 +165,21 @@ mod tests {
             </tileset>
         ";
         let tileset = tiled::parse_tileset(tileset_str.as_bytes(), 1).unwrap();
+        let animation = Spritesheet::get_animation(&tileset, 2);
+        let animation_length = Spritesheet::calculate_animation_length(&animation);
         let mut spritesheet = Spritesheet {
             tileset,
             textures: Default::default(),
             texture_names_to_ids: Default::default(),
             default_tile_id: 2,
             current_tile_id: 2,
-            animation: None,
+            animation,
             animation_time: 0.0,
-            animation_length: 0.0,
+            animation_length,
             is_animating: false,
         };
 
         let mut result = Vec::new();
-        spritesheet.set_animation_data();
 
         spritesheet.start_animation();
         result.push(spritesheet.current_tile_id);
