@@ -165,26 +165,28 @@ mod tests {
             animation: None,
             animation_time: 0.0,
             animation_length: 0.0,
+            is_animating: false,
         };
 
         let mut result = Vec::new();
+        spritesheet.set_animation_data();
 
         spritesheet.start_animation();
         result.push(spritesheet.current_tile_id);
 
-        spritesheet.update_animation(100.0);
+        spritesheet.update_animation(100.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
-        spritesheet.update_animation(100.0);
+        spritesheet.update_animation(100.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
-        spritesheet.update_animation(200.0);
+        spritesheet.update_animation(200.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
-        spritesheet.update_animation(200.0);
+        spritesheet.update_animation(200.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
-        spritesheet.update_animation(200.0);
+        spritesheet.update_animation(200.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
         assert_eq!(result.as_ref(), [2, 0, 2, 1, 2, 0]);
