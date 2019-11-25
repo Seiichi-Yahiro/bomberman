@@ -8,13 +8,65 @@ struct Frame {
     pub duration: u32,
 }
 
-pub struct Spritesheet {
-    tileset: tiled::Tileset,
+struct SpritesheetData {
     textures: TextureMap,
     texture_names_to_ids: HashMap<String, u32>,
+    animations: HashMap<u32, Option<Vec<Frame>>>,
+}
+
+impl SpritesheetData {
+    pub fn new(folder: &str, tileset_file: &str) -> SpritesheetData {
+        let tileset = load_tileset(folder, tileset_file);
+        let textures = load_tileset_textures(&tileset, folder);
+        let texture_names_to_ids = Self::map_texture_names_to_ids(&tileset);
+        let animations = Self::get_animations_from_tileset(&tileset);
+
+        SpritesheetData {
+            textures,
+            texture_names_to_ids,
+            animations,
+        }
+    }
+
+    fn map_texture_names_to_ids(tileset: &tiled::Tileset) -> HashMap<String, u32> {
+        tileset
+            .tiles
+            .iter()
+            .filter_map(|tile| {
+                if let Some(tiled::PropertyValue::StringValue(texture_name)) =
+                    tile.properties.get("name")
+                {
+                    Some((texture_name.clone(), tile.id))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn get_animations_from_tileset(tileset: &tiled::Tileset) -> HashMap<u32, Option<Vec<Frame>>> {
+        tileset
+            .tiles
+            .iter()
+            .map(|tile| {
+                let frames = tile.animation.as_ref().map(Self::convert_tiled_frames);
+                (tile.id, frames)
+            })
+            .collect()
+    }
+
+    fn convert_tiled_frames(frames: &Vec<tiled::Frame>) -> Vec<Frame> {
+        frames
+            .iter()
+            .map(|frame| unsafe { std::mem::transmute(frame.clone()) })
+            .collect()
+    }
+}
+
+pub struct Spritesheet {
+    data: Rc<SpritesheetData>,
     current_tile_id: u32,
     default_tile_id: u32,
-    animation: Option<Vec<Frame>>,
     animation_time: f64,
     animation_length: f64,
     pub is_animating: bool,
@@ -22,57 +74,44 @@ pub struct Spritesheet {
 
 impl Spritesheet {
     pub fn new(folder: &str, tileset_file: &str, default_texture: &str) -> Spritesheet {
-        let tileset = load_tileset(folder, tileset_file);
-        let textures = load_tileset_textures(&tileset, folder);
-        let texture_names_to_ids = Self::map_texture_names_to_ids(&tileset);
-        let default_tile_id = texture_names_to_ids[default_texture];
-        let animation = Self::get_animation(&tileset, default_tile_id);
-        let animation_length = Self::calculate_animation_length(&animation);
+        let data = Rc::new(SpritesheetData::new(folder, tileset_file));
+        let default_tile_id = data.texture_names_to_ids[default_texture];
+        let animation_length = Self::calculate_animation_length(&data.animations[&default_tile_id]);
 
         Spritesheet {
+            data,
             default_tile_id,
             current_tile_id: default_tile_id,
-            textures,
-            texture_names_to_ids,
-            tileset,
-            animation,
             animation_time: 0.0,
             animation_length,
             is_animating: false,
         }
     }
 
+    pub fn from_spritesheet(spritesheet: &Spritesheet) -> Spritesheet {
+        Spritesheet {
+            data: Rc::clone(&spritesheet.data),
+            current_tile_id: spritesheet.default_tile_id,
+            default_tile_id: spritesheet.default_tile_id,
+            animation_time: 0.0,
+            animation_length: spritesheet.animation_length,
+            is_animating: false,
+        }
+    }
+
     pub fn get_current_texture(&self) -> Rc<Texture> {
-        Rc::clone(&self.textures[&self.current_tile_id])
+        Rc::clone(&self.data.textures[&self.current_tile_id])
     }
 
     pub fn set_current_texture(&mut self, texture_name: &str) {
-        let default_tile_id = self.texture_names_to_ids[texture_name];
+        let default_tile_id = self.data.texture_names_to_ids[texture_name];
 
         if self.default_tile_id != default_tile_id {
             self.default_tile_id = default_tile_id;
             self.current_tile_id = default_tile_id;
-            self.set_animation_data();
+            self.animation_length =
+                Self::calculate_animation_length(&self.data.animations[&default_tile_id]);
         }
-    }
-
-    fn set_animation_data(&mut self) {
-        self.animation = Self::get_animation(&self.tileset, self.current_tile_id);
-        self.animation_length = Self::calculate_animation_length(&self.animation);
-    }
-
-    fn get_animation(tileset: &tiled::Tileset, current_tile_id: u32) -> Option<Vec<Frame>> {
-        tileset
-            .tiles
-            .iter()
-            .find(|tile| tile.id == current_tile_id)
-            .and_then(|tile| tile.animation.as_ref())
-            .map(|frames| {
-                frames
-                    .iter()
-                    .map(|frame| unsafe { std::mem::transmute(frame.clone()) }) // Transmute to my Frame as tiled::Frame fields were forgotten to be made public...
-                    .collect::<Vec<Frame>>()
-            })
     }
 
     fn calculate_animation_length(animation: &Option<Vec<Frame>>) -> f64 {
@@ -92,7 +131,10 @@ impl Spritesheet {
     }
 
     pub fn update_animation(&mut self, dt: f64) {
-        if let (Some(frames), true) = (&self.animation, self.is_animating) {
+        if let (Some(frames), true) = (
+            &self.data.animations[&self.default_tile_id],
+            self.is_animating,
+        ) {
             self.animation_time = (self.animation_time + dt * 1000.0) % self.animation_length;
 
             let frame_index = frames
@@ -114,22 +156,6 @@ impl Spritesheet {
 
             self.current_tile_id = frames[frame_index].tile_id;
         }
-    }
-
-    fn map_texture_names_to_ids(tileset: &tiled::Tileset) -> HashMap<String, u32> {
-        tileset
-            .tiles
-            .iter()
-            .filter_map(|tile| {
-                if let Some(tiled::PropertyValue::StringValue(texture_name)) =
-                    tile.properties.get("name")
-                {
-                    Some((texture_name.clone(), tile.id))
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 }
 
@@ -164,19 +190,31 @@ mod tests {
              </tile>
             </tileset>
         ";
-        let tileset = tiled::parse_tileset(tileset_str.as_bytes(), 1).unwrap();
-        let animation = Spritesheet::get_animation(&tileset, 2);
-        let animation_length = Spritesheet::calculate_animation_length(&animation);
-        let mut spritesheet = Spritesheet {
-            tileset,
-            textures: Default::default(),
-            texture_names_to_ids: Default::default(),
-            default_tile_id: 2,
-            current_tile_id: 2,
-            animation,
-            animation_time: 0.0,
-            animation_length,
-            is_animating: false,
+
+        let mut spritesheet = {
+            let default_tile_id = 2;
+
+            let spritesheet_data = {
+                let tileset = tiled::parse_tileset(tileset_str.as_bytes(), 1).unwrap();
+                SpritesheetData {
+                    textures: Default::default(),
+                    texture_names_to_ids: Default::default(),
+                    animations: SpritesheetData::get_animations_from_tileset(&tileset),
+                }
+            };
+
+            let animation_length = Spritesheet::calculate_animation_length(
+                &spritesheet_data.animations[&default_tile_id],
+            );
+
+            Spritesheet {
+                data: Rc::new(spritesheet_data),
+                default_tile_id,
+                current_tile_id: default_tile_id,
+                animation_time: 0.0,
+                animation_length,
+                is_animating: false,
+            }
         };
 
         let mut result = Vec::new();
