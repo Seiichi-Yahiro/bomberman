@@ -1,4 +1,5 @@
 use crate::arenas::object_groups;
+use crate::players::PlayerId;
 use crate::traits::game_loop_event::*;
 use crate::utils::{load_tileset_textures, TextureMap};
 use graphics::math::Vec2d;
@@ -64,7 +65,7 @@ impl ArenaManager {
             .collect()
     }
 
-    pub fn get_player_spawns(&self) -> HashMap<i32, Vec2d> {
+    pub fn get_player_spawns(&self) -> HashMap<PlayerId, Vec2d> {
         self.tile_map
             .object_groups
             .iter()
@@ -75,7 +76,7 @@ impl ArenaManager {
                     object.properties[object_groups::PlayerSpawnsProperties::PlayerId.as_str()]
                 {
                     return (
-                        player_id,
+                        PlayerId::from(player_id.abs() as u32),
                         [
                             object.x as f64,
                             object.y as f64 - self.tile_map.tile_height as f64, // subtract tile_height as tiled origin is bottom left

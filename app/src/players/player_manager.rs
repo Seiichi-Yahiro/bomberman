@@ -1,4 +1,4 @@
-use crate::players::{Player, PlayerId, TextureNames};
+use crate::players::{MoveDirection, Player, PlayerId, TextureNames};
 use crate::traits::game_loop_event::*;
 use crate::utils::Spritesheet;
 use graphics::math::{add, Vec2d};
@@ -11,11 +11,11 @@ const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
 const TILE_SET_NAME: &str = "player_tiles.xml";
 
 pub struct PlayerManager {
-    player: Player,
+    players: Vec<Player>,
 }
 
 impl PlayerManager {
-    pub fn new(player_spawns: HashMap<i32, Vec2d>) -> PlayerManager {
+    pub fn new(player_spawns: HashMap<PlayerId, Vec2d>) -> PlayerManager {
         let spritesheet = Spritesheet::new(
             TEXTURE_FOLDER,
             TILE_SET_NAME,
@@ -23,103 +23,124 @@ impl PlayerManager {
         );
 
         PlayerManager {
-            player: Player::new(PlayerId::Player1, player_spawns[&0], spritesheet),
+            players: vec![
+                Player::new(
+                    PlayerId::Player1,
+                    player_spawns[&PlayerId::Player1],
+                    Spritesheet::from_spritesheet(&spritesheet),
+                ),
+                Player::new(
+                    PlayerId::Player2,
+                    player_spawns[&PlayerId::Player2],
+                    spritesheet,
+                ),
+            ],
         }
     }
 
-    fn update_player_speed(&mut self, update_args: &GameLoopUpdateArgs) {
+    fn update_player_speed(player: &mut Player, update_args: &GameLoopUpdateArgs) {
         let speed = 32.0 * update_args.dt;
-
-        if let Some(key) = self.player.movement_key_stack.last() {
-            self.player.speed = match key {
-                Key::Left => [-speed, 0.0],
-                Key::Right => [speed, 0.0],
-                Key::Up => [0.0, -speed],
-                Key::Down => [0.0, speed],
-                _ => [0.0, 0.0],
-            }
-        } else {
-            self.player.speed = [0.0, 0.0];
+        player.speed = match player
+            .move_direction_stack
+            .last()
+            .unwrap_or(&MoveDirection::Standing)
+        {
+            MoveDirection::Up => [0.0, -speed],
+            MoveDirection::Down => [0.0, speed],
+            MoveDirection::Left => [-speed, 0.0],
+            MoveDirection::Right => [speed, 0.0],
+            MoveDirection::Standing => [0.0, 0.0],
         }
     }
 
-    fn update_player_texture(&mut self) {
-        let [vx, vy] = self.player.speed;
+    fn update_player_texture(player: &mut Player) {
+        let [vx, vy] = player.speed;
 
         if vx > 0.0 {
-            self.player
+            player
                 .spritesheet
                 .set_current_texture(TextureNames::StandingRight.as_str());
         } else if vx < 0.0 {
-            self.player
+            player
                 .spritesheet
                 .set_current_texture(TextureNames::StandingLeft.as_str());
         } else if vy > 0.0 {
-            self.player
+            player
                 .spritesheet
                 .set_current_texture(TextureNames::StandingDown.as_str());
         } else if vy < 0.0 {
-            self.player
+            player
                 .spritesheet
                 .set_current_texture(TextureNames::StandingUp.as_str());
         };
 
         if vx == 0.0 && vy == 0.0 {
-            self.player.spritesheet.stop_animation();
-        } else if !self.player.spritesheet.is_animating {
-            self.player.spritesheet.start_animation();
+            player.spritesheet.stop_animation();
+        } else if !player.spritesheet.is_animating {
+            player.spritesheet.start_animation();
         }
+    }
+
+    fn update_player_position(player: &mut Player) {
+        player.position = add(player.position, player.speed);
+    }
+
+    fn update_player_animation(player: &mut Player, dt: f64) {
+        player.spritesheet.update_animation(dt);
     }
 }
 
 impl GameLoopEvent<()> for PlayerManager {
     fn event(&mut self, event: &Event) {
         if let Some(Button::Keyboard(key)) = event.press_args() {
-            match key {
-                Key::Up | Key::Down | Key::Right | Key::Left => {
-                    if !self.player.movement_key_stack.contains(&key) {
-                        self.player.movement_key_stack.push(key);
-                    }
+            self.players.iter_mut().for_each(|player| {
+                let movement_direction = player.get_move_direction(&key);
+
+                if movement_direction != MoveDirection::Standing
+                    && !player.move_direction_stack.contains(&movement_direction)
+                {
+                    player.move_direction_stack.push(movement_direction);
                 }
-                _ => {}
-            }
+            });
         } else if let Some(Button::Keyboard(key)) = event.release_args() {
-            match key {
-                Key::Up | Key::Down | Key::Right | Key::Left => {
-                    if let Some(index) = self
-                        .player
-                        .movement_key_stack
-                        .iter()
-                        .position(|stored_key| *stored_key == key)
-                    {
-                        self.player.movement_key_stack.remove(index);
-                    }
+            self.players.iter_mut().for_each(|player| {
+                let movement_direction = player.get_move_direction(&key);
+
+                if let Some(index) = player
+                    .move_direction_stack
+                    .iter()
+                    .position(|stored_move_direction| *stored_move_direction == movement_direction)
+                {
+                    player.move_direction_stack.remove(index);
                 }
-                _ => {}
-            }
+            });
         }
     }
 
     fn update(&mut self, update_args: &GameLoopUpdateArgs) {
-        self.update_player_speed(update_args);
-        self.update_player_texture();
-        self.player.position = add(self.player.position, self.player.speed);
-        self.player.spritesheet.update_animation(update_args.dt);
+        self.players.iter_mut().for_each(|player| {
+            Self::update_player_speed(player, update_args);
+            Self::update_player_texture(player);
+            Self::update_player_position(player);
+            Self::update_player_animation(player, update_args.dt);
+        });
     }
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        let mut sprite = {
-            let texture = self.player.spritesheet.get_current_texture();
-            Sprite::from_texture(texture)
-        };
+        self.players.iter().for_each(|player| {
+            let mut sprite = {
+                let texture = player.spritesheet.get_current_texture();
+                Sprite::from_texture(texture)
+            };
 
-        sprite.set_anchor(0.0, 0.0);
+            sprite.set_anchor(0.0, 0.0);
 
-        let transform = {
-            let [x, y] = self.player.position;
-            c.transform.trans(x, y)
-        };
+            let transform = {
+                let [x, y] = player.position;
+                c.transform.trans(x, y)
+            };
 
-        sprite.draw(transform, g);
+            sprite.draw(transform, g);
+        });
     }
 }
