@@ -7,33 +7,16 @@ use piston::input::*;
 use sprite::Sprite;
 use std::collections::HashMap;
 
-const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
-const TILE_SET_NAME: &str = "player1.xml";
-
 pub struct PlayerManager {
     players: Vec<Player>,
 }
 
 impl PlayerManager {
     pub fn new(player_spawns: HashMap<PlayerId, Vec2d>) -> PlayerManager {
-        let spritesheet = Spritesheet::new(
-            TEXTURE_FOLDER,
-            TILE_SET_NAME,
-            PlayerTextureName::FaceDown.as_str(),
-        );
-
         PlayerManager {
             players: vec![
-                Player::new(
-                    PlayerId::Player1,
-                    player_spawns[&PlayerId::Player1],
-                    Spritesheet::from_spritesheet(&spritesheet),
-                ),
-                Player::new(
-                    PlayerId::Player2,
-                    player_spawns[&PlayerId::Player2],
-                    spritesheet,
-                ),
+                Player::new(PlayerId::Player1, player_spawns[&PlayerId::Player1]),
+                Player::new(PlayerId::Player2, player_spawns[&PlayerId::Player2]),
             ],
         }
     }
@@ -128,9 +111,9 @@ impl GameLoopEvent<()> for PlayerManager {
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.players.iter().for_each(|player| {
-            let TextureData {texture, src_rect} = player.spritesheet.get_current_texture_data();
+            let TextureData { texture, src_rect } = player.spritesheet.get_current_texture_data();
             let mut sprite = Sprite::from_texture_rect(texture, src_rect);
-            
+
             sprite.set_anchor(0.0, 0.0);
 
             let transform = {

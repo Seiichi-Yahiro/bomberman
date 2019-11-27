@@ -2,6 +2,8 @@ use crate::utils::Spritesheet;
 use graphics::math::Vec2d;
 use piston::input::Key;
 
+const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
+
 pub enum PlayerTextureName {
     FaceDown,
     FaceUp,
@@ -29,7 +31,13 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(player_id: PlayerId, pos: Vec2d, spritesheet: Spritesheet) -> Player {
+    pub fn new(player_id: PlayerId, pos: Vec2d) -> Player {
+        let spritesheet = Spritesheet::new(
+            TEXTURE_FOLDER,
+            &(player_id.as_str().to_string() + ".xml"),
+            PlayerTextureName::FaceDown.as_str(),
+        );
+
         Player {
             player_id,
             spritesheet,
@@ -75,6 +83,17 @@ pub enum PlayerId {
     Player2,
     Player3,
     Player4,
+}
+
+impl PlayerId {
+    pub fn as_str(&self) -> &str {
+        match self {
+            PlayerId::Player1 => "player1",
+            PlayerId::Player2 => "player2",
+            PlayerId::Player3 => "player3",
+            PlayerId::Player4 => "player4",
+        }
+    }
 }
 
 impl From<u32> for PlayerId {
