@@ -1,13 +1,12 @@
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
 use crate::traits::game_loop_event::*;
-use crate::utils::{load_tileset_textures, TextureMap};
+use crate::utils::{load_tileset_textures, SpritesheetTextureMap, TextureData};
 use graphics::math::Vec2d;
 use graphics::Transformed;
 use sprite::Sprite;
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
 const ARENAS_FOLDER: &str = "app/assets/arenas/";
 const TEXTURE_FOLDER: &str = "app/assets/textures/arena_tiles/";
@@ -19,7 +18,7 @@ type SoftBlockAreas<'a> = HashMap<[u32; 2], &'a tiled::Object>;
 pub struct ArenaManager {
     tile_map: tiled::Map,
     arena_tiles: Vec<ArenaTile>,
-    textures: TextureMap,
+    textures: SpritesheetTextureMap,
 }
 
 impl ArenaManager {
@@ -121,9 +120,8 @@ impl GameLoopEvent<()> for ArenaManager {
             .iter()
             .for_each(|ArenaTile(x, y, tile_id)| {
                 let transform = c.transform.trans(*x as f64, *y as f64);
-
-                let texture = Rc::clone(&self.textures[tile_id]);
-                let mut sprite = Sprite::from_texture(texture);
+                let TextureData { texture, src_rect } = self.textures.get(*tile_id);
+                let mut sprite = Sprite::from_texture_rect(texture, src_rect);
                 sprite.set_anchor(0.0, 0.0);
                 sprite.draw(transform, g);
             });

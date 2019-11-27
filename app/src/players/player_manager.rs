@@ -1,6 +1,6 @@
-use crate::players::{MoveDirection, Player, PlayerId, TextureNames};
+use crate::players::{MoveDirection, Player, PlayerId, PlayerTextureName};
 use crate::traits::game_loop_event::*;
-use crate::utils::Spritesheet;
+use crate::utils::{Spritesheet, TextureData};
 use graphics::math::{add, Vec2d};
 use graphics::Transformed;
 use piston::input::*;
@@ -8,7 +8,7 @@ use sprite::Sprite;
 use std::collections::HashMap;
 
 const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
-const TILE_SET_NAME: &str = "player_tiles.xml";
+const TILE_SET_NAME: &str = "player1.xml";
 
 pub struct PlayerManager {
     players: Vec<Player>,
@@ -19,7 +19,7 @@ impl PlayerManager {
         let spritesheet = Spritesheet::new(
             TEXTURE_FOLDER,
             TILE_SET_NAME,
-            TextureNames::StandingDown.as_str(),
+            PlayerTextureName::FaceDown.as_str(),
         );
 
         PlayerManager {
@@ -59,19 +59,19 @@ impl PlayerManager {
         if vx > 0.0 {
             player
                 .spritesheet
-                .set_current_texture(TextureNames::StandingRight.as_str());
+                .set_current_texture(PlayerTextureName::FaceRight.as_str());
         } else if vx < 0.0 {
             player
                 .spritesheet
-                .set_current_texture(TextureNames::StandingLeft.as_str());
+                .set_current_texture(PlayerTextureName::FaceLeft.as_str());
         } else if vy > 0.0 {
             player
                 .spritesheet
-                .set_current_texture(TextureNames::StandingDown.as_str());
+                .set_current_texture(PlayerTextureName::FaceDown.as_str());
         } else if vy < 0.0 {
             player
                 .spritesheet
-                .set_current_texture(TextureNames::StandingUp.as_str());
+                .set_current_texture(PlayerTextureName::FaceUp.as_str());
         };
 
         if vx == 0.0 && vy == 0.0 {
@@ -128,11 +128,9 @@ impl GameLoopEvent<()> for PlayerManager {
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.players.iter().for_each(|player| {
-            let mut sprite = {
-                let texture = player.spritesheet.get_current_texture();
-                Sprite::from_texture(texture)
-            };
-
+            let TextureData {texture, src_rect} = player.spritesheet.get_current_texture_data();
+            let mut sprite = Sprite::from_texture_rect(texture, src_rect);
+            
             sprite.set_anchor(0.0, 0.0);
 
             let transform = {

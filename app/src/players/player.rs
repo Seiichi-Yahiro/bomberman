@@ -2,20 +2,20 @@ use crate::utils::Spritesheet;
 use graphics::math::Vec2d;
 use piston::input::Key;
 
-pub enum TextureNames {
-    StandingDown,
-    StandingUp,
-    StandingLeft,
-    StandingRight,
+pub enum PlayerTextureName {
+    FaceDown,
+    FaceUp,
+    FaceLeft,
+    FaceRight,
 }
 
-impl TextureNames {
+impl PlayerTextureName {
     pub fn as_str(&self) -> &str {
         match self {
-            TextureNames::StandingDown => "player_standing_down",
-            TextureNames::StandingUp => "player_standing_up",
-            TextureNames::StandingLeft => "player_standing_left",
-            TextureNames::StandingRight => "player_standing_right",
+            PlayerTextureName::FaceDown => "face_down",
+            PlayerTextureName::FaceUp => "face_up",
+            PlayerTextureName::FaceLeft => "face_left",
+            PlayerTextureName::FaceRight => "face_right",
         }
     }
 }
