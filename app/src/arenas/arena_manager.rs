@@ -10,7 +10,7 @@ use std::path::Path;
 
 const ARENAS_FOLDER: &str = "app/assets/arenas/";
 const TEXTURE_FOLDER: &str = "app/assets/textures/arena_tiles/";
-const FILE_NAME: &str = "arena_classic.tmx";
+const FILE_NAME: &str = "ashlands.tmx";
 
 struct ArenaTile(pub u32, pub u32, pub u32); // x, y, tile_id
 type SoftBlockAreas<'a> = HashMap<[u32; 2], &'a tiled::Object>;
