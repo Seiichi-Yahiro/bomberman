@@ -35,7 +35,7 @@ impl SpritesheetData {
                 if let Some(tiled::PropertyValue::StringValue(texture_name)) =
                     tile.properties.get("name")
                 {
-                    Some((texture_name.clone(), tile.id))
+                    Some((texture_name.clone(), tile.id + tileset.first_gid))
                 } else {
                     None
                 }
@@ -48,8 +48,20 @@ impl SpritesheetData {
             .tiles
             .iter()
             .map(|tile| {
-                let frames = tile.animation.as_ref().map(Self::convert_tiled_frames);
-                (tile.id, frames)
+                let frames =
+                    tile.animation
+                        .as_ref()
+                        .map(Self::convert_tiled_frames)
+                        .map(|frames| {
+                            frames
+                                .iter()
+                                .map(|frame| Frame {
+                                    tile_id: frame.tile_id + tileset.first_gid,
+                                    duration: frame.duration,
+                                })
+                                .collect()
+                        });
+                (tile.id + tileset.first_gid, frames)
             })
             .collect()
     }
@@ -189,11 +201,13 @@ mod tests {
             </tileset>
         ";
 
+        let gid = 1;
+
         let mut spritesheet = {
-            let default_tile_id = 2;
+            let default_tile_id = 2 + gid;
 
             let spritesheet_data = {
-                let tileset = tiled::parse_tileset(tileset_str.as_bytes(), 1).unwrap();
+                let tileset = tiled::parse_tileset(tileset_str.as_bytes(), gid).unwrap();
                 SpritesheetData {
                     textures: SpritesheetTextureHolder::default(),
                     texture_names_to_ids: Default::default(),
@@ -235,6 +249,9 @@ mod tests {
         spritesheet.update_animation(200.0 / 1000.0);
         result.push(spritesheet.current_tile_id);
 
-        assert_eq!(result.as_ref(), [2, 0, 2, 1, 2, 0]);
+        assert_eq!(
+            result.as_ref(),
+            [2 + gid, 0 + gid, 2 + gid, 1 + gid, 2 + gid, 0 + gid]
+        );
     }
 }

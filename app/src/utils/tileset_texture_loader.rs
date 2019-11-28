@@ -92,7 +92,8 @@ pub fn load_tileset_textures(tileset: &tiled::Tileset, folder: &str) -> Spritesh
             *height as u32,
             *first_gid,
         );
-        let create_src_rect = create_src_rect_fn(*tile_width, *tile_height, *width as u32);
+        let create_src_rect =
+            create_src_rect_fn(*tile_width, *tile_height, *width as u32, *first_gid);
 
         SpritesheetTextureHolder {
             texture_map: HashMap::new(),
@@ -108,7 +109,7 @@ pub fn load_tileset_textures(tileset: &tiled::Tileset, folder: &str) -> Spritesh
             .iter()
             .map(|tile| {
                 let texture = load_texture(folder, &tile.images.first().unwrap().source);
-                (tile.id, Rc::new(texture))
+                (tile.id + tileset.first_gid, Rc::new(texture))
             })
             .collect();
 
@@ -147,9 +148,11 @@ fn create_src_rect_fn(
     tile_width: u32,
     tile_height: u32,
     image_width: u32,
+    first_gid: u32,
 ) -> Box<dyn Fn(u32) -> SourceRectangle> {
     let columns = image_width / tile_width;
     let create_src_rect = move |tile_id: u32| -> SourceRectangle {
+        let tile_id = tile_id - first_gid;
         let x = (tile_id % columns) * tile_width;
         let y = (tile_id / columns) * tile_height;
         [x as f64, y as f64, tile_width as f64, tile_height as f64]

@@ -53,11 +53,11 @@ impl ArenaManager {
                         // subtract 1 from the tile id as tiled counts from 1 instead of 0
                         if let Some(soft_block) = soft_block_areas.get(&[x, y]) {
                             if Self::should_spawn_soft_block(soft_block) {
-                                return ArenaTile(x, y, soft_block.gid - 1);
+                                return ArenaTile(x, y, soft_block.gid);
                             }
                         }
 
-                        ArenaTile(x, y, tile - 1)
+                        ArenaTile(x, y, tile)
                     })
                     .collect::<Vec<ArenaTile>>()
             })
