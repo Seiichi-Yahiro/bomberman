@@ -13,11 +13,11 @@ const TEXTURE_FOLDER: &str = "app/assets/textures/arena_tiles/";
 const FILE_NAME: &str = "ashlands.tmx";
 
 struct ArenaTile(pub u32, pub u32, pub u32); // x, y, tile_id
-type SoftBlockAreas<'a> = HashMap<[u32; 2], &'a tiled::Object>;
+type SoftBlockAreas<'a> = HashMap<[u32; 3], &'a tiled::Object>; // x, y, layer_id
 
 pub struct ArenaManager {
     tile_map: tiled::Map,
-    arena_tiles: Vec<ArenaTile>,
+    arena_layer_tiles: Vec<Vec<ArenaTile>>,
     textures: SpritesheetTextureHolder,
 }
 
@@ -29,37 +29,46 @@ impl ArenaManager {
         };
 
         ArenaManager {
-            arena_tiles: Self::init_arena_tiles(&tile_map),
+            arena_layer_tiles: Self::init_arena_tiles(&tile_map),
             textures: load_tileset_textures_from_map(&tile_map, TEXTURE_FOLDER),
             tile_map,
         }
     }
 
-    fn init_arena_tiles(tile_map: &tiled::Map) -> Vec<ArenaTile> {
+    fn init_arena_tiles(tile_map: &tiled::Map) -> Vec<Vec<ArenaTile>> {
         let soft_block_areas = Self::get_soft_block_areas(tile_map);
         let (tile_width, tile_height) = (tile_map.tile_width, tile_map.tile_height);
 
-        tile_map.layers[0]
-            .tiles
+        tile_map
+            .layers
             .iter()
             .enumerate()
-            .flat_map(|(y, row)| {
-                row.iter()
+            .map(|(layer_id, layer)| {
+                layer
+                    .tiles
+                    .iter()
                     .enumerate()
-                    .map(|(x, &tile)| {
-                        let x = x as u32 * tile_width;
-                        let y = y as u32 * tile_height;
+                    .flat_map(|(y, row)| {
+                        row.iter()
+                            .enumerate()
+                            .map(|(x, &tile)| {
+                                let x = x as u32 * tile_width;
+                                let y = y as u32 * tile_height;
 
-                        // subtract 1 from the tile id as tiled counts from 1 instead of 0
-                        if let Some(soft_block) = soft_block_areas.get(&[x, y]) {
-                            if Self::should_spawn_soft_block(soft_block) {
-                                return ArenaTile(x, y, soft_block.gid);
-                            }
-                        }
+                                // subtract 1 from the tile id as tiled counts from 1 instead of 0
+                                if let Some(soft_block) =
+                                    soft_block_areas.get(&[x, y, layer_id as u32])
+                                {
+                                    if Self::should_spawn_soft_block(soft_block) {
+                                        return ArenaTile(x, y, soft_block.gid);
+                                    }
+                                }
 
-                        ArenaTile(x, y, tile)
+                                ArenaTile(x, y, tile)
+                            })
+                            .collect::<Vec<ArenaTile>>()
                     })
-                    .collect::<Vec<ArenaTile>>()
+                    .collect()
             })
             .collect()
     }
@@ -94,11 +103,21 @@ impl ArenaManager {
             .iter()
             .filter(|group| group.name == object_groups::ArenaObjectGroup::SoftBlockAreas.as_str())
             .flat_map(|group| &group.objects)
-            .map(|object| {
-                (
-                    [object.x as u32, object.y as u32 - tile_map.tile_height], // subtract tile height as object tiles have their origin in the bottom left corner
-                    object,
-                )
+            .filter_map(|object| {
+                if let tiled::PropertyValue::IntValue(layer_id) =
+                    object.properties[object_groups::SoftBlockAreasProperties::RenderLayer.as_str()]
+                {
+                    Some((
+                        [
+                            object.x as u32,
+                            object.y as u32 - tile_map.tile_height,
+                            layer_id as u32,
+                        ], // subtract tile height as object tiles have their origin in the bottom left corner
+                        object,
+                    ))
+                } else {
+                    None
+                }
             })
             .collect()
     }
@@ -116,9 +135,8 @@ impl ArenaManager {
 
 impl GameLoopEvent<()> for ArenaManager {
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.arena_tiles
-            .iter()
-            .for_each(|ArenaTile(x, y, tile_id)| {
+        self.arena_layer_tiles.iter().for_each(|layer| {
+            layer.iter().for_each(|ArenaTile(x, y, tile_id)| {
                 let transform = c.transform.trans(*x as f64, *y as f64);
                 if let Some(TextureData { texture, src_rect }) =
                     self.textures.get_texture_data(*tile_id)
@@ -128,5 +146,6 @@ impl GameLoopEvent<()> for ArenaManager {
                     sprite.draw(transform, g);
                 }
             });
+        });
     }
 }

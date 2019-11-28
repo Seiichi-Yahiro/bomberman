@@ -14,12 +14,14 @@ impl ArenaObjectGroup {
 
 pub enum SoftBlockAreasProperties {
     SpawnChance,
+    RenderLayer,
 }
 
 impl SoftBlockAreasProperties {
     pub fn as_str(&self) -> &str {
         match self {
             SoftBlockAreasProperties::SpawnChance => "spawn_chance",
+            SoftBlockAreasProperties::RenderLayer => "render_layer",
         }
     }
 }
