@@ -8,8 +8,8 @@ use sprite::Sprite;
 use std::collections::HashMap;
 use std::path::Path;
 
-const ARENAS_FOLDER: &str = "app/assets/arenas/";
-const TEXTURE_FOLDER: &str = "app/assets/textures/arena_tiles/";
+const ARENAS_FOLDER: &str = "assets/arenas/";
+const TEXTURE_FOLDER: &str = "assets/textures/arena_tiles/";
 const FILE_NAME: &str = "ashlands.tmx";
 
 struct ArenaTile(pub u32, pub u32, pub u32); // x, y, tile_id

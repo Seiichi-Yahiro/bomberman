@@ -2,7 +2,7 @@ use crate::utils::Spritesheet;
 use graphics::math::Vec2d;
 use piston::input::Key;
 
-const TEXTURE_FOLDER: &str = "app/assets/textures/player/";
+const TEXTURE_FOLDER: &str = "assets/textures/player/";
 
 pub enum PlayerTextureName {
     FaceDown,
