@@ -1,13 +1,3 @@
-extern crate ai_behavior;
-extern crate glutin_window;
-extern crate graphics;
-extern crate image;
-extern crate opengl_graphics;
-extern crate piston;
-extern crate rand;
-extern crate sprite;
-extern crate tiled;
-
 mod arenas;
 mod game_states;
 mod players;
