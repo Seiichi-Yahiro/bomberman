@@ -1,6 +1,6 @@
 use crate::players::{MoveDirection, Player, PlayerId, PlayerTextureName};
 use crate::traits::game_loop_event::*;
-use crate::utils::{Spritesheet, TextureData};
+use crate::utils::TextureData;
 use graphics::math::{add, Vec2d};
 use graphics::Transformed;
 use piston::input::*;
@@ -111,17 +111,20 @@ impl GameLoopEvent<()> for PlayerManager {
 
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.players.iter().for_each(|player| {
-            let TextureData { texture, src_rect } = player.spritesheet.get_current_texture_data();
-            let mut sprite = Sprite::from_texture_rect(texture, src_rect);
+            if let Some(TextureData { texture, src_rect }) =
+                player.spritesheet.get_current_texture_data()
+            {
+                let mut sprite = Sprite::from_texture_rect(texture, src_rect);
 
-            sprite.set_anchor(0.0, 0.0);
+                sprite.set_anchor(0.0, 0.0);
 
-            let transform = {
-                let [x, y] = player.position;
-                c.transform.trans(x, y)
-            };
+                let transform = {
+                    let [x, y] = player.position;
+                    c.transform.trans(x, y)
+                };
 
-            sprite.draw(transform, g);
+                sprite.draw(transform, g);
+            }
         });
     }
 }

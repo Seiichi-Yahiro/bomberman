@@ -1,4 +1,4 @@
-use crate::utils::{load_tileset, load_tileset_textures, SpritesheetTextureMap, TextureData};
+use crate::utils::{load_tileset, load_tileset_textures, SpritesheetTextureHolder, TextureData};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -8,7 +8,7 @@ struct Frame {
 }
 
 struct SpritesheetData {
-    textures: SpritesheetTextureMap,
+    textures: SpritesheetTextureHolder,
     texture_names_to_ids: HashMap<String, u32>,
     animations: HashMap<u32, Option<Vec<Frame>>>,
 }
@@ -98,8 +98,8 @@ impl Spritesheet {
         }
     }
 
-    pub fn get_current_texture_data(&self) -> TextureData {
-        self.data.textures.get(self.current_tile_id)
+    pub fn get_current_texture_data(&self) -> Option<TextureData> {
+        self.data.textures.get_texture_data(self.current_tile_id)
     }
 
     pub fn set_current_texture(&mut self, texture_name: &str) {
@@ -195,7 +195,7 @@ mod tests {
             let spritesheet_data = {
                 let tileset = tiled::parse_tileset(tileset_str.as_bytes(), 1).unwrap();
                 SpritesheetData {
-                    textures: SpritesheetTextureMap::SpriteCollection(HashMap::new()),
+                    textures: SpritesheetTextureHolder::default(),
                     texture_names_to_ids: Default::default(),
                     animations: SpritesheetData::get_animations_from_tileset(&tileset),
                 }

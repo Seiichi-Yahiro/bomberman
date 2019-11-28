@@ -4,9 +4,43 @@ use opengl_graphics::{Texture, TextureSettings};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub enum SpritesheetTextureMap {
-    Spritesheet(Rc<Texture>, Box<dyn Fn(u32) -> SourceRectangle>),
-    SpriteCollection(HashMap<u32, Rc<Texture>>),
+#[derive(Default)]
+pub struct SpritesheetTextureHolder {
+    texture_map: HashMap<u32, Rc<Texture>>,
+    spritesheet_list: Vec<Spritesheet>,
+}
+
+impl SpritesheetTextureHolder {
+    pub fn get_texture_data(&self, tile_id: u32) -> Option<TextureData> {
+        if let Some(texture) = self.texture_map.get(&tile_id) {
+            Some(TextureData::new(
+                Rc::clone(texture),
+                [
+                    0.0,
+                    0.0,
+                    texture.get_width() as f64,
+                    texture.get_height() as f64,
+                ],
+            ))
+        } else if let Some(spritesheet) = self
+            .spritesheet_list
+            .iter()
+            .find(|spritesheet| (spritesheet.contains)(tile_id))
+        {
+            Some(TextureData::new(
+                Rc::clone(&spritesheet.texture),
+                (spritesheet.create_src_rect)(tile_id),
+            ))
+        } else {
+            None
+        }
+    }
+}
+
+struct Spritesheet {
+    pub texture: Rc<Texture>,
+    pub contains: Box<dyn Fn(u32) -> bool>,
+    pub create_src_rect: Box<dyn Fn(u32) -> SourceRectangle>,
 }
 
 pub struct TextureData {
@@ -20,66 +54,106 @@ impl TextureData {
     }
 }
 
-impl SpritesheetTextureMap {
-    pub fn get(&self, tile_id: u32) -> TextureData {
-        match self {
-            SpritesheetTextureMap::Spritesheet(texture, create_src_rect) => {
-                TextureData::new(Rc::clone(texture), create_src_rect(tile_id))
-            }
-            SpritesheetTextureMap::SpriteCollection(texture_map) => {
-                let texture = texture_map.get(&tile_id).unwrap_or_else(|| {
-                    panic!(format!("Could not find texture with tile_id {}!", tile_id));
-                });
-                TextureData::new(
-                    Rc::clone(texture),
-                    [
-                        0.0,
-                        0.0,
-                        texture.get_width() as f64,
-                        texture.get_height() as f64,
-                    ],
-                )
-            }
-        }
-    }
-}
-
 pub fn load_tileset(folder: &str, tileset_file: &str) -> tiled::Tileset {
     let path = format!("{}{}", folder, tileset_file);
     tiled::parse_tileset(std::fs::File::open(path).unwrap(), 1).unwrap()
 }
 
-pub fn load_tileset_textures(tileset: &tiled::Tileset, folder: &str) -> SpritesheetTextureMap {
-    if !tileset.images.is_empty() {
-        let tiled::Image { source, width, .. } = tileset.images.first().unwrap();
+pub fn load_tileset_textures_from_map(map: &tiled::Map, folder: &str) -> SpritesheetTextureHolder {
+    map.tilesets
+        .iter()
+        .map(|tileset| load_tileset_textures(tileset, folder))
+        .fold(SpritesheetTextureHolder::default(), |mut acc, item| {
+            acc.spritesheet_list.extend(item.spritesheet_list);
+            acc.texture_map.extend(item.texture_map);
+            acc
+        })
+}
 
-        let tile_width = tileset.tile_width;
-        let tile_height = tileset.tile_height;
-        let columns = *width as u32 / tileset.tile_width;
+pub fn load_tileset_textures(tileset: &tiled::Tileset, folder: &str) -> SpritesheetTextureHolder {
+    if let Some(tiled::Image {
+        source,
+        width,
+        height,
+        ..
+    }) = tileset.images.first()
+    {
+        let tiled::Tileset {
+            tile_width,
+            tile_height,
+            first_gid,
+            ..
+        } = tileset;
+        let texture = load_texture(folder, source);
+        let spritesheet_contains_tile_id = create_spritesheet_contains_tile_id_fn(
+            *tile_width,
+            *tile_height,
+            *width as u32,
+            *height as u32,
+            *first_gid,
+        );
+        let create_src_rect = create_src_rect_fn(*tile_width, *tile_height, *width as u32);
 
-        let path = format!("{}{}", folder, source);
-        let texture_settings = TextureSettings::new();
-        let texture = Texture::from_path(path, &texture_settings).unwrap();
-
-        let create_src_rect = move |tile_id: u32| -> SourceRectangle {
-            let x = (tile_id % columns) * tile_width;
-            let y = (tile_id / columns) * tile_height;
-            [x as f64, y as f64, tile_width as f64, tile_height as f64]
-        };
-
-        SpritesheetTextureMap::Spritesheet(Rc::new(texture), Box::new(create_src_rect))
+        SpritesheetTextureHolder {
+            texture_map: HashMap::new(),
+            spritesheet_list: vec![Spritesheet {
+                texture: Rc::new(texture),
+                contains: spritesheet_contains_tile_id,
+                create_src_rect,
+            }],
+        }
     } else {
         let texture_map: HashMap<u32, Rc<Texture>> = tileset
             .tiles
             .iter()
             .map(|tile| {
-                let path = format!("{}{}", folder, tile.images.first().unwrap().source);
-                let texture_settings = TextureSettings::new();
-                let texture = Texture::from_path(path, &texture_settings).unwrap();
+                let texture = load_texture(folder, &tile.images.first().unwrap().source);
                 (tile.id, Rc::new(texture))
             })
             .collect();
 
-        SpritesheetTextureMap::SpriteCollection(texture_map)
+        SpritesheetTextureHolder {
+            spritesheet_list: vec![],
+            texture_map,
+        }
     }
+}
+
+fn load_texture(folder: &str, source: &str) -> Texture {
+    let path = format!("{}{}", folder, source);
+    let texture_settings = TextureSettings::new();
+    Texture::from_path(path, &texture_settings).unwrap()
+}
+
+fn create_spritesheet_contains_tile_id_fn(
+    tile_width: u32,
+    tile_height: u32,
+    image_width: u32,
+    image_height: u32,
+    first_gid: u32,
+) -> Box<dyn Fn(u32) -> bool> {
+    let x_tiles = image_width / tile_width;
+    let y_tiles = image_height / tile_height;
+    let number_of_tiles = x_tiles * y_tiles;
+    let last_gid = first_gid + number_of_tiles - 1;
+
+    let spritesheet_contains_tile_id =
+        move |tile_id: u32| tile_id >= first_gid && tile_id <= last_gid;
+
+    Box::new(spritesheet_contains_tile_id)
+}
+
+fn create_src_rect_fn(
+    tile_width: u32,
+    tile_height: u32,
+    image_width: u32,
+) -> Box<dyn Fn(u32) -> SourceRectangle> {
+    let columns = image_width / tile_width;
+    let create_src_rect = move |tile_id: u32| -> SourceRectangle {
+        let x = (tile_id % columns) * tile_width;
+        let y = (tile_id / columns) * tile_height;
+        [x as f64, y as f64, tile_width as f64, tile_height as f64]
+    };
+
+    Box::new(create_src_rect)
 }

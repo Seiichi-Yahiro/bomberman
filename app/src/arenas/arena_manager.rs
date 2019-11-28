@@ -1,7 +1,7 @@
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
 use crate::traits::game_loop_event::*;
-use crate::utils::{load_tileset_textures, SpritesheetTextureMap, TextureData};
+use crate::utils::{load_tileset_textures_from_map, SpritesheetTextureHolder, TextureData};
 use graphics::math::Vec2d;
 use graphics::Transformed;
 use sprite::Sprite;
@@ -18,7 +18,7 @@ type SoftBlockAreas<'a> = HashMap<[u32; 2], &'a tiled::Object>;
 pub struct ArenaManager {
     tile_map: tiled::Map,
     arena_tiles: Vec<ArenaTile>,
-    textures: SpritesheetTextureMap,
+    textures: SpritesheetTextureHolder,
 }
 
 impl ArenaManager {
@@ -30,7 +30,7 @@ impl ArenaManager {
 
         ArenaManager {
             arena_tiles: Self::init_arena_tiles(&tile_map),
-            textures: load_tileset_textures(&tile_map.tilesets[0], TEXTURE_FOLDER),
+            textures: load_tileset_textures_from_map(&tile_map, TEXTURE_FOLDER),
             tile_map,
         }
     }
@@ -120,10 +120,13 @@ impl GameLoopEvent<()> for ArenaManager {
             .iter()
             .for_each(|ArenaTile(x, y, tile_id)| {
                 let transform = c.transform.trans(*x as f64, *y as f64);
-                let TextureData { texture, src_rect } = self.textures.get(*tile_id);
-                let mut sprite = Sprite::from_texture_rect(texture, src_rect);
-                sprite.set_anchor(0.0, 0.0);
-                sprite.draw(transform, g);
+                if let Some(TextureData { texture, src_rect }) =
+                    self.textures.get_texture_data(*tile_id)
+                {
+                    let mut sprite = Sprite::from_texture_rect(texture, src_rect);
+                    sprite.set_anchor(0.0, 0.0);
+                    sprite.draw(transform, g);
+                }
             });
     }
 }
