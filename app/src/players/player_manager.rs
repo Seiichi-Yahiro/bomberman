@@ -57,9 +57,7 @@ impl PlayerManager {
                 .set_current_texture(PlayerTextureName::FaceUp.as_str());
         };
 
-        if vx == 0.0 && vy == 0.0 {
-            player.spritesheet.stop_animation();
-        } else if !player.spritesheet.is_animating {
+        if !player.spritesheet.is_animating {
             player.spritesheet.start_animation();
         }
     }
