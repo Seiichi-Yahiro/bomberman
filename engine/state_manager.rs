@@ -71,9 +71,9 @@ impl GameLoopEvent<()> for StateManager {
         self.apply_pending_transitions();
     }
 
-    fn update(&mut self, update_args: &GameLoopUpdateArgs) {
+    fn update(&mut self, dt: f64) {
         for state in self.stack.iter_mut().rev() {
-            let StateStackEvent(transition, should_pass_down) = state.update(update_args);
+            let StateStackEvent(transition, should_pass_down) = state.update(dt);
             self.pending_transitions.push(transition);
 
             if !should_pass_down {

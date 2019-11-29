@@ -1,8 +1,6 @@
 use crate::arenas::ArenaManager;
-use crate::game_states::state::*;
 use crate::players::PlayerManager;
-use crate::traits::game_loop_event::*;
-use piston::input::*;
+use engine::game_state::*;
 
 pub struct PlayState {
     arena_manager: ArenaManager,
@@ -32,9 +30,9 @@ impl GameLoopEvent<StateStackEvent> for PlayState {
         StateStackEvent(StateTransition::None, true)
     }
 
-    fn update(&mut self, update_args: &GameLoopUpdateArgs) -> StateStackEvent {
-        self.arena_manager.update(update_args);
-        self.player_manager.update(update_args);
+    fn update(&mut self, dt: f64) -> StateStackEvent {
+        self.arena_manager.update(dt);
+        self.player_manager.update(dt);
         StateStackEvent(StateTransition::None, true)
     }
 

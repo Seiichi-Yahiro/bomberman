@@ -1,9 +1,8 @@
 use crate::players::{MoveDirection, Player, PlayerId, PlayerTextureName};
-use crate::traits::game_loop_event::*;
 use crate::utils::TextureData;
+use engine::game_state::*;
 use graphics::math::{add, Vec2d};
 use graphics::Transformed;
-use piston::input::*;
 use sprite::Sprite;
 use std::collections::HashMap;
 
@@ -21,8 +20,8 @@ impl PlayerManager {
         }
     }
 
-    fn update_player_speed(player: &mut Player, update_args: &GameLoopUpdateArgs) {
-        let speed = 32.0 * update_args.dt;
+    fn update_player_speed(player: &mut Player, dt: f64) {
+        let speed = 32.0 * dt;
         player.speed = match player
             .move_direction_stack
             .last()
@@ -98,12 +97,12 @@ impl GameLoopEvent<()> for PlayerManager {
         }
     }
 
-    fn update(&mut self, update_args: &GameLoopUpdateArgs) {
+    fn update(&mut self, dt: f64) {
         self.players.iter_mut().for_each(|player| {
-            Self::update_player_speed(player, update_args);
+            Self::update_player_speed(player, dt);
             Self::update_player_texture(player);
             Self::update_player_position(player);
-            Self::update_player_animation(player, update_args.dt);
+            Self::update_player_animation(player, dt);
         });
     }
 

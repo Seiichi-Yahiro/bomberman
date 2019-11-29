@@ -1,7 +1,7 @@
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
-use crate::traits::game_loop_event::*;
 use crate::utils::{load_tileset_textures_from_map, SpritesheetTextureHolder, TextureData};
+use engine::game_state::*;
 use graphics::math::Vec2d;
 use graphics::Transformed;
 use sprite::Sprite;
