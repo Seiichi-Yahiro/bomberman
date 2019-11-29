@@ -1,5 +1,7 @@
 mod app;
+mod map;
 mod state_manager;
+mod texture_holder;
 mod traits;
 
 pub mod prelude {
@@ -12,4 +14,8 @@ pub mod game_state {
     pub use super::state_manager::*;
     pub use super::traits::game_loop_event::*;
     pub use piston::input::*;
+}
+
+pub mod texture {
+    pub use super::texture_holder::*;
 }

@@ -1,7 +1,7 @@
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
-use crate::utils::{load_tileset_textures_from_map, SpritesheetTextureHolder, TextureData};
 use engine::game_state::*;
+use engine::texture::*;
 use graphics::math::Vec2d;
 use graphics::Transformed;
 use sprite::Sprite;
@@ -18,7 +18,7 @@ type SoftBlockAreas<'a> = HashMap<[u32; 3], &'a tiled::Object>; // x, y, layer_i
 pub struct ArenaManager {
     tile_map: tiled::Map,
     arena_layer_tiles: Vec<Vec<ArenaTile>>,
-    textures: SpritesheetTextureHolder,
+    textures: TextureHolder,
 }
 
 impl ArenaManager {
@@ -30,7 +30,7 @@ impl ArenaManager {
 
         ArenaManager {
             arena_layer_tiles: Self::init_arena_tiles(&tile_map),
-            textures: load_tileset_textures_from_map(&tile_map, TEXTURE_FOLDER),
+            textures: TextureHolder::from_map(&tile_map, TEXTURE_FOLDER),
             tile_map,
         }
     }

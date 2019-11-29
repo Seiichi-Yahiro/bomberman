@@ -1,6 +1,6 @@
 use crate::players::{MoveDirection, Player, PlayerId, PlayerTextureName};
-use crate::utils::TextureData;
 use engine::game_state::*;
+use engine::texture::TextureData;
 use graphics::math::{add, Vec2d};
 use graphics::Transformed;
 use sprite::Sprite;
