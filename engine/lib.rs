@@ -3,6 +3,7 @@ mod map;
 mod state_manager;
 mod texture_holder;
 mod traits;
+mod utils;
 
 pub mod prelude {
     pub use super::app::App;
