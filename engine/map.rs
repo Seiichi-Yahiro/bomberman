@@ -1,14 +1,14 @@
-use crate::texture_holder::{TextureData, TextureHolder};
+use crate::texture_holder::TextureHolder;
 use crate::traits::game_loop_event::*;
 use crate::utils::flatten_2d;
-use graphics::Transformed;
 use opengl_graphics::Texture;
 use sprite::Sprite;
 use std::collections::HashMap;
 
 pub struct Map {
-    texture_holder: TextureHolder,
-    tiles: Vec<HashMap<[u32; 2], Sprite<Texture>>>,
+    pub texture_holder: TextureHolder,
+    pub tiles: Vec<HashMap<[u32; 2], Sprite<Texture>>>,
+    pub object_groups: HashMap<String, Vec<tiled::Object>>,
 }
 
 impl Map {
@@ -16,10 +16,12 @@ impl Map {
         let tile_map = tiled::parse_file(std::path::Path::new(path)).unwrap();
         let texture_holder = TextureHolder::from_map(&tile_map, texture_folder);
         let tiles = Self::convert_tile_map_to_tiles(&tile_map, &texture_holder);
+        let object_groups = Self::extract_object_groups_from_tile_map(&tile_map);
 
         Map {
             tiles,
             texture_holder,
+            object_groups,
         }
     }
 
@@ -49,6 +51,16 @@ impl Map {
         };
 
         tile_map.layers.iter().map(convert_layer_to_tiles).collect()
+    }
+
+    fn extract_object_groups_from_tile_map(
+        tile_map: &tiled::Map,
+    ) -> HashMap<String, Vec<tiled::Object>> {
+        tile_map
+            .object_groups
+            .iter()
+            .map(|group| (group.name.clone(), group.objects.clone()))
+            .collect()
     }
 }
 
