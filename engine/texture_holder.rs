@@ -148,6 +148,7 @@ impl Spritesheet {
     }
 }
 
+#[derive(Clone)]
 pub struct TextureData {
     pub texture: Rc<Texture>,
     pub src_rect: SourceRectangle,

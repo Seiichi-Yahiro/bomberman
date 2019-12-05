@@ -25,6 +25,41 @@ impl Map {
         }
     }
 
+    pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {
+        tile_updates
+            .into_iter()
+            .for_each(|tile_update| self.update_tile(tile_update));
+    }
+
+    pub fn update_tile(&mut self, tile_update: TileUpdate) {
+        let TileUpdate {
+            layer_id,
+            position,
+            tile_id,
+        } = tile_update;
+
+        if let Some(texture_data) = &self.texture_holder.get_texture_data(tile_id) {
+            if let Some(layer) = self.tiles.get_mut(layer_id) {
+                layer
+                    .entry(position)
+                    .and_modify(|sprite| {
+                        sprite.set_texture(texture_data.texture.clone());
+                        sprite.set_src_rect(texture_data.src_rect);
+                    })
+                    .or_insert_with(|| {
+                        let mut sprite = Sprite::from_texture_rect(
+                            texture_data.texture.clone(),
+                            texture_data.src_rect,
+                        );
+                        let [x, y] = position;
+                        sprite.set_anchor(0.0, 0.0);
+                        sprite.set_position(x as f64, y as f64);
+                        sprite
+                    });
+            }
+        }
+    }
+
     fn convert_tile_map_to_tiles(
         tile_map: &tiled::Map,
         texture_holder: &TextureHolder,
@@ -59,7 +94,20 @@ impl Map {
         tile_map
             .object_groups
             .iter()
-            .map(|group| (group.name.clone(), group.objects.clone()))
+            .map(|group| {
+                (
+                    group.name.clone(),
+                    group
+                        .objects
+                        .clone()
+                        .into_iter()
+                        .map(|mut object| {
+                            object.y -= tile_map.tile_height as f32; // Objects origin is at bottom left
+                            object
+                        })
+                        .collect(),
+                )
+            })
             .collect()
     }
 }
@@ -70,6 +118,22 @@ impl GameLoopEvent<()> for Map {
             for (_, sprite) in layer {
                 sprite.draw(c.transform, g);
             }
+        }
+    }
+}
+
+pub struct TileUpdate {
+    layer_id: usize,
+    position: [u32; 2],
+    tile_id: u32,
+}
+
+impl TileUpdate {
+    pub fn new(layer_id: usize, position: [u32; 2], tile_id: u32) -> TileUpdate {
+        TileUpdate {
+            layer_id,
+            position,
+            tile_id,
         }
     }
 }

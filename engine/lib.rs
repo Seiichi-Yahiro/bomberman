@@ -1,5 +1,5 @@
 mod app;
-mod map;
+pub mod map;
 mod state_manager;
 mod texture_holder;
 mod traits;
