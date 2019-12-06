@@ -1,3 +1,4 @@
+pub mod animation;
 mod app;
 pub mod character;
 pub mod map;

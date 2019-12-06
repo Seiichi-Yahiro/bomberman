@@ -69,6 +69,8 @@ impl Character {
 }
 
 impl GameLoopEvent<()> for Character {
+    fn update(&mut self, dt: f64) {}
+
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.sprite.draw(c.transform, g);
     }
