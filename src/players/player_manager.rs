@@ -1,4 +1,5 @@
 use crate::players::{MoveDirection, Player, PlayerId, PlayerTextureName};
+use engine::character::Character;
 use engine::game_state::*;
 use engine::texture::TextureData;
 use graphics::math::{add, Vec2d};
@@ -8,15 +9,20 @@ use std::collections::HashMap;
 
 pub struct PlayerManager {
     players: Vec<Player>,
+    characters: Vec<Character>,
 }
 
 impl PlayerManager {
     pub fn new(player_spawns: HashMap<PlayerId, Vec2d>) -> PlayerManager {
         PlayerManager {
             players: vec![
-                Player::new(PlayerId::Player1, player_spawns[&PlayerId::Player1]),
-                Player::new(PlayerId::Player2, player_spawns[&PlayerId::Player2]),
+                //Player::new(PlayerId::Player1, player_spawns[&PlayerId::Player1]),
+                //Player::new(PlayerId::Player2, player_spawns[&PlayerId::Player2]),
             ],
+            characters: vec![Character::new(
+                "assets/textures/player/player1.xml",
+                "assets/textures/player/",
+            )],
         }
     }
 
@@ -122,6 +128,10 @@ impl GameLoopEvent<()> for PlayerManager {
 
                 sprite.draw(transform, g);
             }
+        });
+
+        self.characters.iter().for_each(|character| {
+            character.draw(c, g);
         });
     }
 }

@@ -1,4 +1,5 @@
 mod app;
+pub mod character;
 pub mod map;
 mod state_manager;
 mod texture_holder;
