@@ -23,20 +23,13 @@ impl TextureHolder {
 
     pub fn from_tileset(tileset: &tiled::Tileset, folder: &str) -> TextureHolder {
         if let Some(image) = tileset.images.first() {
-            let &tiled::Tileset {
-                tile_width,
-                tile_height,
-                first_gid,
-                ..
-            } = tileset;
-
             TextureHolder {
                 texture_map: TextureMap::default(),
                 spritesheet_list: vec![Spritesheet {
                     texture: Rc::new(Self::load_texture(folder, &image.source)),
-                    tile_width,
-                    tile_height,
-                    first_gid,
+                    tile_width: tileset.tile_width,
+                    tile_height: tileset.tile_height,
+                    first_gid: tileset.first_gid,
                 }],
             }
         } else {
