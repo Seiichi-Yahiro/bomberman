@@ -1,6 +1,7 @@
 use graphics::types::SourceRectangle;
 use graphics::ImageSize;
 use opengl_graphics::{Texture, TextureSettings};
+use sprite::Sprite;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -150,5 +151,22 @@ pub struct TextureData {
 impl TextureData {
     pub fn new(texture: Rc<Texture>, src_rect: SourceRectangle) -> TextureData {
         TextureData { texture, src_rect }
+    }
+}
+
+pub trait SpriteTextureDataExt {
+    fn from_texture_data(texture_data: TextureData) -> Self;
+
+    fn update_texture_data(&mut self, texture_data: TextureData);
+}
+
+impl SpriteTextureDataExt for Sprite<Texture> {
+    fn from_texture_data(texture_data: TextureData) -> Self {
+        Sprite::from_texture_rect(texture_data.texture, texture_data.src_rect)
+    }
+
+    fn update_texture_data(&mut self, texture_data: TextureData) {
+        self.set_texture(texture_data.texture);
+        self.set_src_rect(texture_data.src_rect);
     }
 }
