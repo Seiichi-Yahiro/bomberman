@@ -2,6 +2,7 @@ use crate::arenas::object_groups;
 use crate::players::PlayerId;
 use engine::game_state::*;
 use engine::map::{Map, TileUpdate};
+use graphics::math::Vec2d;
 use std::collections::HashMap;
 
 const ARENAS_FOLDER: &str = "assets/arenas/";
@@ -20,41 +21,42 @@ impl ArenaManager {
         ArenaManager { map }
     }
 
-    /*pub fn get_player_spawns(&self) -> HashMap<PlayerId, Vec2d> {
-        self.tile_map
+    pub fn get_player_spawns(&self) -> HashMap<PlayerId, Vec2d> {
+        self.map
             .object_groups
+            .get(object_groups::ArenaObjectGroup::PlayerSpawns.as_str())
             .iter()
-            .filter(|group| group.name == object_groups::ArenaObjectGroup::PlayerSpawns.as_str())
-            .flat_map(|group| &group.objects)
-            .map(|object| {
-                if let tiled::PropertyValue::IntValue(player_id) =
-                    object.properties[object_groups::PlayerSpawnsProperties::PlayerId.as_str()]
-                {
-                    return (
-                        PlayerId::from(player_id.abs() as u32),
-                        [
-                            object.x as f64,
-                            object.y as f64 - self.tile_map.tile_height as f64, // subtract tile_height as tiled origin is bottom left
-                        ],
-                    );
-                }
-
-                panic!("No player spawns found!");
+            .flat_map(|v| v.iter())
+            .filter_map(|object| {
+                object
+                    .properties
+                    .get(object_groups::PlayerSpawnsProperties::PlayerId.as_str())
+                    .and_then(|property_value| match property_value {
+                        tiled::PropertyValue::IntValue(player_id) => Some(player_id),
+                        _ => None,
+                    })
+                    .map(|player_id| {
+                        (
+                            PlayerId::from(player_id.abs() as u32),
+                            [object.x as f64, object.y as f64],
+                        )
+                    })
             })
             .collect()
-    }*/
+    }
 
     fn create_soft_block_tile_updates(map: &Map) -> Vec<TileUpdate> {
         let should_spawn_soft_block = |soft_block: &&tiled::Object| -> bool {
-            match soft_block
+            soft_block
                 .properties
                 .get(object_groups::SoftBlockAreasProperties::SpawnChance.as_str())
-            {
-                Some(tiled::PropertyValue::FloatValue(spawn_chance)) => {
-                    rand::random::<f32>() <= *spawn_chance
-                }
-                _ => false,
-            }
+                .map(|property_value| match property_value {
+                    tiled::PropertyValue::FloatValue(spawn_chance) => {
+                        rand::random::<f32>() <= *spawn_chance
+                    }
+                    _ => false,
+                })
+                .unwrap_or(false)
         };
 
         map.object_groups
@@ -63,17 +65,17 @@ impl ArenaManager {
             .flat_map(|objects| objects.iter())
             .filter(should_spawn_soft_block)
             .filter_map(|object| {
-                match object
+                object
                     .properties
                     .get(object_groups::SoftBlockAreasProperties::RenderLayer.as_str())
-                {
-                    Some(tiled::PropertyValue::IntValue(layer_id)) => Some(TileUpdate::new(
-                        *layer_id as usize,
-                        [object.x as u32, object.y as u32],
-                        object.gid,
-                    )),
-                    _ => None,
-                }
+                    .and_then(|property_value| match property_value {
+                        tiled::PropertyValue::IntValue(layer_id) => Some(TileUpdate::new(
+                            *layer_id as usize,
+                            [object.x as u32, object.y as u32],
+                            object.gid,
+                        )),
+                        _ => None,
+                    })
             })
             .collect()
     }
