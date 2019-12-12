@@ -1,7 +1,7 @@
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
 use engine::game_state::*;
-use engine::map::{Map, TileUpdate};
+use engine::map::{TileUpdate, Map};
 use graphics::math::Vec2d;
 use std::collections::HashMap;
 

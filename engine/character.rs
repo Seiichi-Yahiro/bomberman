@@ -1,3 +1,4 @@
+/*
 use crate::texture_holder::{SpriteTextureDataExt, TextureHolder};
 use crate::traits::game_loop_event::*;
 use opengl_graphics::Texture;
@@ -98,3 +99,4 @@ impl From<&str> for PlayerFaceDirection {
         }
     }
 }
+*/

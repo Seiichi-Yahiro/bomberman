@@ -1,28 +1,23 @@
+use crate::sprite::Sprite;
 use crate::texture_holder::{SpriteTextureDataExt, TextureHolder};
+use crate::tilemap::Tilemap;
+use crate::tileset::Tileset;
 use crate::traits::game_loop_event::*;
 use crate::utils::flatten_2d;
 use opengl_graphics::Texture;
-use sprite::Sprite;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub struct Map {
-    pub texture_holder: TextureHolder,
-    pub tiles: Vec<HashMap<[u32; 2], Sprite<Texture>>>,
-    pub object_groups: HashMap<String, Vec<tiled::Object>>,
+    pub tilemap: Rc<Tilemap>,
+    pub tiles: Vec<HashMap<[u32; 2], Sprite>>,
 }
 
 impl Map {
-    pub fn new(path: &str, texture_folder: &str) -> Map {
-        let tile_map = tiled::parse_file(std::path::Path::new(path)).unwrap();
-        let texture_holder = TextureHolder::from_map(&tile_map, texture_folder);
-        let tiles = Self::convert_tile_map_to_tiles(&tile_map, &texture_holder);
-        let object_groups = Self::extract_object_groups_from_tile_map(&tile_map);
+    pub fn from_tilemap(tilemap: Rc<Tilemap>) -> Map {
+        let tiles = Self::convert_tilemap_to_tiles(&tilemap);
 
-        Map {
-            tiles,
-            texture_holder,
-            object_groups,
-        }
+        Map { tiles, tilemap }
     }
 
     pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {
@@ -56,60 +51,29 @@ impl Map {
         }
     }
 
-    fn convert_tile_map_to_tiles(
-        tile_map: &tiled::Map,
-        texture_holder: &TextureHolder,
-    ) -> Vec<HashMap<[u32; 2], Sprite<Texture>>> {
-        let convert_layer_to_tiles = |layer: &tiled::Layer| {
-            flatten_2d(&layer.tiles)
-                .into_iter()
-                .filter_map(|(row, column, &tile_id)| {
-                    texture_holder
-                        .get_texture_data(tile_id)
-                        .map(|texture_data| {
-                            let x = column as u32 * tile_map.tile_width;
-                            let y = row as u32 * tile_map.tile_height;
-                            let mut sprite = Sprite::from_texture_data(texture_data);
-                            sprite.set_anchor(0.0, 0.0);
-                            sprite.set_position(x as f64, y as f64);
-                            ([x, y], sprite)
-                        })
-                })
-                .collect()
-        };
-
-        tile_map.layers.iter().map(convert_layer_to_tiles).collect()
-    }
-
-    fn extract_object_groups_from_tile_map(
-        tile_map: &tiled::Map,
-    ) -> HashMap<String, Vec<tiled::Object>> {
-        tile_map
-            .object_groups
+    fn convert_tilemap_to_tiles(tilemap: &Tilemap) -> Vec<HashMap<[u32; 2], Sprite>> {
+        tilemap
+            .tiles
             .iter()
-            .map(|group| {
-                (
-                    group.name.clone(),
-                    group
-                        .objects
-                        .clone()
-                        .into_iter()
-                        .map(|mut object| {
-                            object.y -= tile_map.tile_height as f32; // Objects origin is at bottom left
-                            object
-                        })
-                        .collect(),
-                )
+            .map(|tiles| {
+                tiles.iter().map(|tile| {
+                    let sprite = Sprite::from_tileset(Rc::clone(&tilemap.tileset), tile.tile_id);
+                    let x = tile.column as u32 * tilemap.tile_width;
+                    let y = tile.row as u32 * tilemap.tile_height;
+                    sprite.set_anchor(0.0, 0.0);
+                    sprite.set_position(x as f64, y as f64);
+                    ([x, y], sprite)
+                })
             })
             .collect()
     }
 }
 
-impl GameLoopEvent<()> for Map {
+impl Drawable for Map {
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
         for layer in &self.tiles {
             for (_, sprite) in layer {
-                sprite.draw(c.transform, g);
+                sprite.draw(c, g);
             }
         }
     }
