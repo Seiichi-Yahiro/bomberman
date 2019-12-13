@@ -1,4 +1,4 @@
-use crate::sprite::Sprite;
+use crate::sprite_holder::SpriteHolder;
 use crate::texture_holder::{SpriteTextureDataExt, TextureHolder};
 use crate::tilemap::Tilemap;
 use crate::tileset::Tileset;
@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 pub struct Map {
     pub tilemap: Rc<Tilemap>,
-    pub tiles: Vec<HashMap<[u32; 2], Sprite>>,
+    pub tiles: Vec<HashMap<[u32; 2], SpriteHolder>>,
 }
 
 impl Map {
@@ -33,37 +33,48 @@ impl Map {
             tile_id,
         } = tile_update;
 
-        if let Some(texture_data) = self.texture_holder.get_texture_data(tile_id) {
-            if let Some(layer) = self.tiles.get_mut(layer_id) {
-                layer
-                    .entry(position)
-                    .and_modify(|sprite| {
-                        sprite.update_texture_data(texture_data.clone());
-                    })
-                    .or_insert_with(|| {
-                        let mut sprite = Sprite::from_texture_data(texture_data.clone());
-                        let [x, y] = position;
-                        sprite.set_anchor(0.0, 0.0);
-                        sprite.set_position(x as f64, y as f64);
-                        sprite
-                    });
-            }
+        let tileset = &Rc::clone(&self.tilemap.tileset);
+
+        if let Some(layer) = self.tiles.get_mut(layer_id) {
+            layer
+                .entry(position)
+                .and_modify(|sprite_holder| {
+                    if let Some(texture_data) = tileset.texture_holder.get_texture_data(tile_id) {
+                        sprite_holder.sprite.update_texture_data(texture_data);
+                    }
+                })
+                .or_insert_with(|| {
+                    SpriteHolder::from_tileset(Rc::clone(tileset), tile_id).map(
+                        |mut sprite_holder| {
+                            let [x, y] = position;
+                            sprite_holder.sprite.set_anchor(0.0, 0.0);
+                            sprite_holder.sprite.set_position(x as f64, y as f64);
+                            sprite_holder
+                        },
+                    )
+                });
         }
     }
 
-    fn convert_tilemap_to_tiles(tilemap: &Tilemap) -> Vec<HashMap<[u32; 2], Sprite>> {
+    fn convert_tilemap_to_tiles(tilemap: &Tilemap) -> Vec<HashMap<[u32; 2], SpriteHolder>> {
         tilemap
             .tiles
             .iter()
             .map(|tiles| {
-                tiles.iter().map(|tile| {
-                    let sprite = Sprite::from_tileset(Rc::clone(&tilemap.tileset), tile.tile_id);
-                    let x = tile.column as u32 * tilemap.tile_width;
-                    let y = tile.row as u32 * tilemap.tile_height;
-                    sprite.set_anchor(0.0, 0.0);
-                    sprite.set_position(x as f64, y as f64);
-                    ([x, y], sprite)
-                })
+                tiles
+                    .iter()
+                    .filter_map(|tile| {
+                        SpriteHolder::from_tileset(Rc::clone(&tilemap.tileset), tile.tile_id).map(
+                            |mut sprite_holder| {
+                                sprite_holder.sprite.set_anchor(0.0, 0.0);
+                                sprite_holder
+                                    .sprite
+                                    .set_position(tile.x as f64, tile.y as f64);
+                                ([tile.x, tile.y], sprite_holder)
+                            },
+                        )
+                    })
+                    .collect()
             })
             .collect()
     }

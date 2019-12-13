@@ -1,24 +1,22 @@
-use crate::animation::{load_animation_frames_from_tileset, Frame};
+use crate::animation::{Animation, Frame};
 use crate::asset_storage::Asset;
 use crate::texture_holder::TextureHolder;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::Path;
+use std::rc::Rc;
 
 #[derive(Default)]
 pub struct Tileset {
     pub texture_holder: TextureHolder,
-    pub animation_frames_holder: HashMap<u32, Vec<Frame>>,
+    pub animation_frames_holder: HashMap<u32, Rc<Vec<Frame>>>,
 }
 
 impl Tileset {
-    pub fn from_tileset<E: Error>(tileset: &tiled::Tileset, folder: &Path) -> Result<Tileset, E> {
-        let tileset = Tileset {
-            texture_holder: TextureHolder::from_tileset(&tileset, folder)?,
-            animation_frames_holder: load_animation_frames_from_tileset(&tileset),
-        };
-
-        Ok(tileset)
+    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path) -> Tileset {
+        Tileset {
+            texture_holder: TextureHolder::from_tileset(&tileset, folder),
+            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
+        }
     }
 
     pub fn combine(&mut self, tileset: Tileset) {
@@ -29,22 +27,24 @@ impl Tileset {
 }
 
 impl Asset for Tileset {
-    fn load_from_file<E>(path: &str) -> Result<Self, E>
+    fn load_from_file(path: &Path) -> Self
     where
         Self: Sized,
-        E: Error,
     {
         if !path.is_file() || !path.ends_with(".xml") {
-            return Err(format!("{} is not a .xml file!", path));
+            panic!(format!("{} is not a .xml file!", path.display()));
         }
 
-        let tileset = tiled::parse_tileset(std::fs::File::open(path)?, 1)?;
+        let tileset = tiled::parse_tileset(std::fs::File::open(path).unwrap(), 1).unwrap();
 
         Self::from_tileset(
             &tileset,
-            &path
-                .parent()
-                .ok_or(format!("Cannot find parent directory of {}", path))?,
+            &path.parent().unwrap_or_else(|| {
+                panic!(format!(
+                    "Cannot find parent directory of {}",
+                    path.display()
+                ))
+            }),
         )
     }
 }

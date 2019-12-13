@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.2" tiledversion="1.3.0" orientation="orthogonal" renderorder="right-down" compressionlevel="0" width="15" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="116">
- <tileset firstgid="1" source="../textures/arena_tiles/ashlands.xml"/>
- <tileset firstgid="129" source="../textures/arena_tiles/ashlands_items.xml"/>
+ <tileset firstgid="1" source="ashlands.xml"/>
+ <tileset firstgid="129" source="ashlands_items.xml"/>
  <layer id="1" name="Tile Layer 1" width="15" height="13">
   <data encoding="csv">
 39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,

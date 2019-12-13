@@ -1,16 +1,16 @@
+use std::any::Any;
 use std::collections::HashMap;
-use std::error::Error;
+use std::path::Path;
 use std::rc::Rc;
 
-pub trait Asset {
-    fn load_from_file<E>(path: &str) -> Result<Self, E>
+pub trait Asset: Any {
+    fn load_from_file(path: &Path) -> Self
     where
-        Self: Sized,
-        E: Error;
+        Self: Sized;
 }
 
 pub struct AssetStorage {
-    storage: HashMap<&'static str, Rc<dyn Asset>>,
+    storage: HashMap<String, Rc<dyn Any>>,
 }
 
 impl AssetStorage {
@@ -20,13 +20,17 @@ impl AssetStorage {
         }
     }
 
-    pub fn load_asset_from_file<A: Asset>(&mut self, path: &str) -> Rc<A> {
+    pub fn load_asset_from_file<A>(&mut self, path: &Path) -> Rc<A>
+    where
+        A: Asset,
+    {
         let asset = self
             .storage
-            .entry(path)
-            .or_insert_with(|| A::load_from_file(path).unwrap());
+            .entry(path.to_str().unwrap().to_string())
+            .or_insert_with(|| Rc::new(A::load_from_file(path)))
+            .clone();
 
-        Rc::clone(asset)
+        Rc::clone(&asset.downcast().unwrap())
     }
 
     pub fn release_asset(&mut self, path: &str) {

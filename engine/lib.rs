@@ -3,7 +3,7 @@ mod app;
 mod asset_storage;
 pub mod character;
 pub mod map;
-mod sprite;
+mod sprite_holder;
 mod state_manager;
 mod texture_holder;
 mod tilemap;

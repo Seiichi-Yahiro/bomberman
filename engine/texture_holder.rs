@@ -14,28 +14,22 @@ pub struct TextureHolder {
 }
 
 impl TextureHolder {
-    pub fn from_map<E: Error>(map: &tiled::Map, folder: &Path) -> Result<TextureHolder, E> {
-        let texture_holder = map
-            .tilesets
+    pub fn from_map(map: &tiled::Map, folder: &Path) -> TextureHolder {
+        map.tilesets
             .iter()
             .map(|tileset| Self::from_tileset(tileset, folder))
             .fold(TextureHolder::default(), |mut acc, item| {
-                acc.combine(item?);
+                acc.combine(item);
                 acc
-            });
-
-        Ok(texture_holder)
+            })
     }
 
-    pub fn from_tileset<E: Error>(
-        tileset: &tiled::Tileset,
-        folder: &Path,
-    ) -> Result<TextureHolder, E> {
-        let texture_holder = if let Some(image) = tileset.images.first() {
+    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path) -> TextureHolder {
+        if let Some(image) = tileset.images.first() {
             TextureHolder {
                 texture_map: TextureMap::default(),
                 spritesheet_list: vec![Spritesheet {
-                    texture: Rc::new(Self::load_texture(&folder.join(&image.source))?),
+                    texture: Rc::new(Self::load_texture(&folder.join(&image.source))),
                     tile_width: tileset.tile_width,
                     tile_height: tileset.tile_height,
                     first_gid: tileset.first_gid,
@@ -46,15 +40,8 @@ impl TextureHolder {
                 .tiles
                 .iter()
                 .map(|tile| {
-                    let texture = Self::load_texture(
-                        &folder.join(
-                            &tile
-                                .images
-                                .first()
-                                .ok_or("No image connected to tile!")?
-                                .source,
-                        ),
-                    )?;
+                    let texture =
+                        Self::load_texture(&folder.join(&tile.images.first().unwrap().source));
                     (tile.id + tileset.first_gid, Rc::new(texture))
                 })
                 .collect();
@@ -63,14 +50,12 @@ impl TextureHolder {
                 spritesheet_list: vec![],
                 texture_map: TextureMap::new(texture_map),
             }
-        };
-
-        Ok(texture_holder)
+        }
     }
 
-    fn load_texture<E: Error>(path: &Path) -> Result<Texture, E> {
+    fn load_texture(path: &Path) -> Texture {
         let texture_settings = TextureSettings::new();
-        Texture::from_path(path, &texture_settings)
+        Texture::from_path(path, &texture_settings).unwrap()
     }
 
     pub fn combine(&mut self, texture_holder: TextureHolder) {

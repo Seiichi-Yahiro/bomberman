@@ -2,13 +2,12 @@ use crate::asset_storage::Asset;
 use crate::tileset::Tileset;
 use crate::utils::flatten_2d;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
 pub struct Tile {
-    pub row: usize,
-    pub column: usize,
+    pub y: u32,
+    pub x: u32,
     pub tile_id: u32,
 }
 
@@ -24,8 +23,8 @@ impl Tilemap {
             flatten_2d(&layer.tiles)
                 .into_iter()
                 .map(|(row, column, &tile_id)| Tile {
-                    row,
-                    column,
+                    y: row as u32 * tile_map.tile_height,
+                    x: column as u32 * tile_map.tile_width,
                     tile_id,
                 })
                 .collect()
@@ -59,17 +58,16 @@ impl Tilemap {
 }
 
 impl Asset for Tilemap {
-    fn load_from_file<E>(path: &str) -> Result<Self, E>
+    fn load_from_file(path: &Path) -> Self
     where
         Self: Sized,
-        E: Error,
     {
         let path = Path::new(path);
         if !path.is_file() || !path.ends_with(".tmx") {
-            return Err(format!("{} is not a .tmx file!", path));
+            panic!(format!("{} is not a .tmx file!", path.display()));
         }
 
-        let tile_map = tiled::parse_file(path)?;
+        let tile_map = tiled::parse_file(path).unwrap();
 
         let tileset = tile_map
             .tilesets
@@ -77,20 +75,23 @@ impl Asset for Tilemap {
             .map(|tileset| {
                 Tileset::from_tileset(
                     tileset,
-                    &path
-                        .parent()
-                        .ok_or(format!("Cannot find parent directory of {}", path))?,
+                    &path.parent().unwrap_or_else(|| {
+                        panic!(format!(
+                            "Cannot find parent directory of {}",
+                            path.display()
+                        ))
+                    }),
                 )
             })
             .fold(Tileset::default(), |mut acc, item| {
-                acc.combine(item?);
+                acc.combine(item);
                 acc
             });
 
-        Ok(Tilemap {
+        Tilemap {
             tiles: Self::convert_tilemap_to_tiles(&tile_map),
             object_groups: Self::extract_object_groups_from_tile_map(&tile_map),
             tileset: Rc::new(tileset),
-        })
+        }
     }
 }
