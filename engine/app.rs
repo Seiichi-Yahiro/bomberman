@@ -1,6 +1,7 @@
 use crate::asset_storage::AssetStorage;
 use crate::state_manager::{GameState, StateManager};
 use crate::traits::game_loop_event::*;
+use crate::world::World;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::*;
@@ -11,7 +12,7 @@ pub struct App {
     window: Window,
     events: Events,
     opengl_version: OpenGL,
-    asset_storage: AssetStorage,
+    world: World,
 }
 
 impl App {
@@ -27,27 +28,27 @@ impl App {
                 .unwrap_or_else(|e| panic!("Failed to build Window: {}", e)),
             events: Events::new(event_settings),
             opengl_version,
-            asset_storage: AssetStorage::new(),
+            world: World::new(),
         }
     }
 
     pub fn run(&mut self, initial_state: Box<dyn GameState>) {
         let mut gl = GlGraphics::new(self.opengl_version);
-        let mut state_manager = StateManager::new(initial_state, &mut self.asset_storage);
+        let mut state_manager = StateManager::new(initial_state, &mut self.world);
 
         while let (Some(event), false) =
             (self.events.next(&mut self.window), state_manager.is_empty())
         {
-            state_manager.handle_event(&mut self.asset_storage, &event);
+            state_manager.handle_event(&mut self.world, &event);
 
             if let Some(update_args) = event.update_args() {
-                state_manager.update(&mut self.asset_storage, update_args.dt);
+                state_manager.update(&mut self.world, update_args.dt);
             }
 
             if let Some(render_args) = event.render_args() {
                 gl.draw(render_args.viewport(), |c, g| {
                     graphics::clear([1.0; 4], g);
-                    state_manager.draw(&c, g);
+                    state_manager.draw(&self.world, &c, g);
                 });
             }
         }

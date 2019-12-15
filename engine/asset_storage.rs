@@ -1,7 +1,9 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::path::Path;
 use std::rc::Rc;
+use uuid::Uuid;
 
 pub trait Asset: Any {
     fn load_from_file(path: &Path) -> Self
@@ -20,20 +22,19 @@ impl AssetStorage {
         }
     }
 
-    pub fn load_asset_from_file<A>(&mut self, path: &Path) -> Rc<A>
-    where
-        A: Asset,
-    {
-        let asset = self
-            .storage
-            .entry(path.to_str().unwrap().to_string())
-            .or_insert_with(|| Rc::new(A::load_from_file(path)))
-            .clone();
-
-        Rc::clone(&asset.downcast().unwrap())
+    pub fn load_asset_from_file<A: Asset>(&mut self, path: &Path, id: String) {
+        let asset = A::load_from_file(path);
+        self.storage.insert(id, Rc::new(asset));
     }
 
-    pub fn release_asset(&mut self, path: &str) {
-        self.storage.remove(path);
+    pub fn release_asset(&mut self, id: String) {
+        self.storage.remove(&id);
+    }
+
+    pub fn get_asset<A: Asset>(&self, id: String) -> Rc<A> {
+        self.storage
+            .get(&id)
+            .map(|asset| Rc::clone(asset).downcast::<A>().unwrap())
+            .unwrap()
     }
 }

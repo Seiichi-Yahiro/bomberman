@@ -1,3 +1,4 @@
+use crate::tileset::TileId;
 use graphics::types::SourceRectangle;
 use graphics::ImageSize;
 use opengl_graphics::{Texture, TextureSettings};
@@ -64,7 +65,7 @@ impl TextureHolder {
             .extend(texture_holder.spritesheet_list);
     }
 
-    pub fn get_texture_data(&self, tile_id: u32) -> Option<TextureData> {
+    pub fn get_texture_data(&self, tile_id: TileId) -> Option<TextureData> {
         self.spritesheet_list
             .iter()
             .find_map(|spritesheet| spritesheet.get_texture_data(tile_id))
@@ -73,7 +74,7 @@ impl TextureHolder {
 }
 
 struct TextureMap {
-    pub map: HashMap<u32, Rc<Texture>>,
+    pub map: HashMap<TileId, Rc<Texture>>,
 }
 
 impl Default for TextureMap {
@@ -85,11 +86,11 @@ impl Default for TextureMap {
 }
 
 impl TextureMap {
-    pub fn new(map: HashMap<u32, Rc<Texture>>) -> TextureMap {
+    pub fn new(map: HashMap<TileId, Rc<Texture>>) -> TextureMap {
         TextureMap { map }
     }
 
-    pub fn get_texture_data(&self, tile_id: u32) -> Option<TextureData> {
+    pub fn get_texture_data(&self, tile_id: TileId) -> Option<TextureData> {
         self.map.get(&tile_id).map(|texture| {
             TextureData::new(
                 Rc::clone(texture),
@@ -112,7 +113,7 @@ struct Spritesheet {
 }
 
 impl Spritesheet {
-    pub fn contains(&self, tile_id: u32) -> bool {
+    pub fn contains(&self, tile_id: TileId) -> bool {
         let x_tiles = self.texture.get_width() / self.tile_width;
         let y_tiles = self.texture.get_height() / self.tile_height;
         let number_of_tiles = x_tiles * y_tiles;
@@ -121,7 +122,7 @@ impl Spritesheet {
         (self.first_gid..last_gid).contains(&tile_id)
     }
 
-    pub fn get_src_rect(&self, tile_id: u32) -> Option<SourceRectangle> {
+    pub fn get_src_rect(&self, tile_id: TileId) -> Option<SourceRectangle> {
         if self.contains(tile_id) {
             let columns = self.texture.get_width() / self.tile_width;
             let tile_id = tile_id - self.first_gid;
@@ -138,7 +139,7 @@ impl Spritesheet {
         }
     }
 
-    pub fn get_texture_data(&self, tile_id: u32) -> Option<TextureData> {
+    pub fn get_texture_data(&self, tile_id: TileId) -> Option<TextureData> {
         self.get_src_rect(tile_id)
             .map(|rect| TextureData::new(Rc::clone(&self.texture), rect))
     }

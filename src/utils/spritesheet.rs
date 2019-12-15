@@ -1,3 +1,4 @@
+/*
 use crate::utils::load_tileset;
 use engine::texture::*;
 use std::collections::HashMap;
@@ -256,3 +257,4 @@ mod tests {
         );
     }
 }
+*/

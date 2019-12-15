@@ -1,8 +1,9 @@
+/*
 use crate::arenas::object_groups;
 use crate::players::PlayerId;
+use engine::asset::TilePosition;
 use engine::game_state::*;
-use engine::map::{TileUpdate, Map};
-use graphics::math::Vec2d;
+use engine::map::{Map, TileUpdate};
 use std::collections::HashMap;
 
 const ARENAS_FOLDER: &str = "assets/arenas/";
@@ -21,7 +22,7 @@ impl ArenaManager {
         ArenaManager { map }
     }
 
-    pub fn get_player_spawns(&self) -> HashMap<PlayerId, Vec2d> {
+    pub fn get_player_spawns(&self) -> HashMap<PlayerId, TilePosition> {
         self.map
             .object_groups
             .get(object_groups::ArenaObjectGroup::PlayerSpawns.as_str())
@@ -86,3 +87,4 @@ impl GameLoopEvent<()> for ArenaManager {
         self.map.draw(c, g);
     }
 }
+*/

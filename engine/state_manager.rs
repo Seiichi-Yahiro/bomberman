@@ -1,9 +1,9 @@
-use crate::asset_storage::AssetStorage;
 use crate::traits::game_loop_event::*;
+use crate::world::World;
 
 pub trait GameState: EventHandler<StateStackEvent> + Updatable<StateStackEvent> + Drawable {
-    fn on_create(&mut self, _asset_storage: &mut AssetStorage) {}
-    fn on_destroy(&self, _asset_storage: &mut AssetStorage) {}
+    fn on_create(&mut self, _world: &mut World) {}
+    fn on_destroy(&self, _world: &mut World) {}
 }
 
 pub enum StateTransition {
@@ -22,8 +22,8 @@ pub struct StateManager {
 }
 
 impl StateManager {
-    pub fn new(mut state: Box<dyn GameState>, asset_storage: &mut AssetStorage) -> StateManager {
-        state.on_create(asset_storage);
+    pub fn new(mut state: Box<dyn GameState>, world: &mut World) -> StateManager {
+        state.on_create(world);
 
         StateManager {
             stack: vec![state],
@@ -35,24 +35,24 @@ impl StateManager {
         self.stack.is_empty()
     }
 
-    fn apply_pending_transitions(&mut self, asset_storage: &mut AssetStorage) {
+    fn apply_pending_transitions(&mut self, world: &mut World) {
         self.pending_transitions.reverse();
 
         while let Some(transition) = self.pending_transitions.pop() {
             match transition {
                 StateTransition::Push(state) => {
-                    self.push(state, asset_storage);
+                    self.push(state, world);
                 }
                 StateTransition::Pop => {
-                    self.pop(asset_storage);
+                    self.pop(world);
                 }
                 StateTransition::Switch(state) => {
-                    self.pop(asset_storage);
-                    self.push(state, asset_storage);
+                    self.pop(world);
+                    self.push(state, world);
                 }
                 StateTransition::Clear => {
                     while let Some(old_state) = self.stack.pop() {
-                        old_state.on_destroy(asset_storage);
+                        old_state.on_destroy(world);
                     }
                 }
                 StateTransition::None => {}
@@ -60,23 +60,22 @@ impl StateManager {
         }
     }
 
-    fn push(&mut self, mut state: Box<dyn GameState>, asset_storage: &mut AssetStorage) {
-        state.on_create(asset_storage);
+    fn push(&mut self, mut state: Box<dyn GameState>, world: &mut World) {
+        state.on_create(world);
         self.stack.push(state)
     }
 
-    fn pop(&mut self, asset_storage: &mut AssetStorage) {
+    fn pop(&mut self, world: &mut World) {
         if let Some(old_state) = self.stack.pop() {
-            old_state.on_destroy(asset_storage);
+            old_state.on_destroy(world);
         }
     }
 }
 
 impl EventHandler for StateManager {
-    fn handle_event(&mut self, asset_storage: &mut AssetStorage, event: &Event) {
+    fn handle_event(&mut self, world: &mut World, event: &Event) {
         for state in self.stack.iter_mut().rev() {
-            let StateStackEvent(transition, should_pass_down) =
-                state.handle_event(asset_storage, event);
+            let StateStackEvent(transition, should_pass_down) = state.handle_event(world, event);
             self.pending_transitions.push(transition);
 
             if !should_pass_down {
@@ -84,14 +83,14 @@ impl EventHandler for StateManager {
             }
         }
 
-        self.apply_pending_transitions(asset_storage);
+        self.apply_pending_transitions(world);
     }
 }
 
 impl Updatable for StateManager {
-    fn update(&mut self, asset_storage: &mut AssetStorage, dt: f64) {
+    fn update(&mut self, world: &mut World, dt: f64) {
         for state in self.stack.iter_mut().rev() {
-            let StateStackEvent(transition, should_pass_down) = state.update(asset_storage, dt);
+            let StateStackEvent(transition, should_pass_down) = state.update(world, dt);
             self.pending_transitions.push(transition);
 
             if !should_pass_down {
@@ -99,12 +98,12 @@ impl Updatable for StateManager {
             }
         }
 
-        self.apply_pending_transitions(asset_storage);
+        self.apply_pending_transitions(world);
     }
 }
 
 impl Drawable for StateManager {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.stack.iter().for_each(|state| state.draw(c, g))
+    fn draw(&self, world: &World, c: &Context, g: &mut GlGraphics) {
+        self.stack.iter().for_each(|state| state.draw(world, c, g))
     }
 }
