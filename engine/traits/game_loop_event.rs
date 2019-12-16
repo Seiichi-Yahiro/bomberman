@@ -1,4 +1,3 @@
-use crate::state_manager::StateContext;
 pub use graphics::Context;
 pub use opengl_graphics::GlGraphics;
 pub use piston::input::Event;

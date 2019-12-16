@@ -1,5 +1,4 @@
 use crate::asset_storage::Asset;
-use crate::sprite_holder::SpriteHolder;
 use crate::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::flatten_2d;
 use std::collections::HashMap;
@@ -16,10 +15,7 @@ pub struct Tilemap {
 }
 
 impl Tilemap {
-    fn convert_tilemap_to_tiles(
-        tilemap: &tiled::Map,
-        tileset: &Rc<Tileset>,
-    ) -> Vec<HashMap<TilePosition, TileId>> {
+    fn convert_tilemap_to_tiles(tilemap: &tiled::Map) -> Vec<HashMap<TilePosition, TileId>> {
         let convert_layer_to_tiles = |layer: &tiled::Layer| {
             flatten_2d(&layer.tiles)
                 .into_iter()
@@ -98,14 +94,12 @@ impl Asset for Tilemap {
                 acc
             });
 
-        let tileset = Rc::new(tileset);
-
         Tilemap {
             width: tilemap.width,
             height: tilemap.height,
-            tiles: Self::convert_tilemap_to_tiles(&tilemap, &tileset),
+            tiles: Self::convert_tilemap_to_tiles(&tilemap),
             object_groups: Self::extract_object_groups_from_tilemap(&tilemap),
-            tileset,
+            tileset: Rc::new(tileset),
         }
     }
 }

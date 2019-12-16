@@ -1,5 +1,5 @@
 use crate::asset_storage::AssetStorage;
-use crate::state_manager::{GameState, GameStateBuilder, StateManager};
+use crate::state_manager::{GameStateBuilder, StateManager};
 use crate::traits::game_loop_event::*;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};

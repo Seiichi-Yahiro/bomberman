@@ -4,7 +4,6 @@ use graphics::ImageSize;
 use opengl_graphics::{Texture, TextureSettings};
 use sprite::Sprite;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 

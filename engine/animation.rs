@@ -1,6 +1,4 @@
-use crate::asset_storage::AssetStorage;
-use crate::state_manager::StateContext;
-use crate::traits::game_loop_event::{Drawable, Updatable};
+use crate::traits::game_loop_event::Updatable;
 use std::collections::HashMap;
 use std::rc::Rc;
 

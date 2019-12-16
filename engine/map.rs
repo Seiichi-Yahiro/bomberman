@@ -1,18 +1,14 @@
 use crate::animation::Animation;
-use crate::asset_storage::{Asset, AssetStorage};
 use crate::event::{Event, EventId};
 use crate::sprite_holder::SpriteHolder;
 use crate::texture_holder::SpriteTextureDataExt;
 use crate::tilemap::Tilemap;
-use crate::tileset::{TileId, TilePosition, Tileset, TilesetId};
+use crate::tileset::TilePosition;
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use crate::utils::flatten_2d;
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 use std::collections::HashMap;
-use std::path::Path;
 use std::rc::Rc;
-use uuid::Uuid;
 
 pub struct Map {
     pub events: HashMap<EventId, Event>,
@@ -44,18 +40,6 @@ impl Map {
                 .collect(),
             tilemap,
         }
-    }
-
-    pub fn get_width(&self) -> u32 {
-        self.tilemap.width
-    }
-
-    pub fn get_height(&self) -> u32 {
-        self.tilemap.height
-    }
-
-    pub fn get_object_groups(&self) -> &HashMap<String, Vec<tiled::Object>> {
-        &self.tilemap.object_groups
     }
 
     pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {

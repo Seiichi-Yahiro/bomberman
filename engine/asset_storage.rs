@@ -1,9 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::path::Path;
 use std::rc::Rc;
-use uuid::Uuid;
 
 pub trait Asset: Any {
     fn load_from_file(path: &Path) -> Self
@@ -11,6 +9,7 @@ pub trait Asset: Any {
         Self: Sized;
 }
 
+#[derive(Default)]
 pub struct AssetStorage {
     storage: HashMap<String, Rc<dyn Any>>,
 }

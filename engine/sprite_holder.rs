@@ -1,6 +1,5 @@
-use crate::animation::{Animation, Frame};
-use crate::asset_storage::AssetStorage;
-use crate::texture_holder::{SpriteTextureDataExt, TextureData};
+use crate::animation::Animation;
+use crate::texture_holder::SpriteTextureDataExt;
 use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::Context;
