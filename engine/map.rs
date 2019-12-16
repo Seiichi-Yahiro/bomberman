@@ -1,6 +1,8 @@
+use crate::animation::Animation;
 use crate::asset_storage::{Asset, AssetStorage};
 use crate::event::{Event, EventId};
 use crate::sprite_holder::SpriteHolder;
+use crate::texture_holder::SpriteTextureDataExt;
 use crate::tilemap::Tilemap;
 use crate::tileset::{TileId, TilePosition, Tileset, TilesetId};
 use crate::traits::game_loop_event::{Drawable, Updatable};
@@ -15,7 +17,7 @@ use uuid::Uuid;
 pub struct Map {
     pub events: HashMap<EventId, Event>,
     pub tiles: Vec<HashMap<TilePosition, SpriteHolder>>,
-    tilemap: Rc<Tilemap>,
+    pub tilemap: Rc<Tilemap>,
 }
 
 impl Map {
@@ -55,6 +57,49 @@ impl Map {
     pub fn get_object_groups(&self) -> &HashMap<String, Vec<tiled::Object>> {
         &self.tilemap.object_groups
     }
+
+    pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {
+        tile_updates
+            .into_iter()
+            .for_each(|tile_update| self.update_tile(tile_update));
+    }
+
+    pub fn update_tile(&mut self, tile_update: TileUpdate) {
+        if let Some(texture_data) = self
+            .tilemap
+            .tileset
+            .texture_holder
+            .get_texture_data(tile_update.tile_id)
+        {
+            let tileset = Rc::clone(&self.tilemap.tileset);
+
+            if let Some(layer) = self.tiles.get_mut(tile_update.layer) {
+                layer
+                    .entry(tile_update.position)
+                    .and_modify(|sprite_holder| {
+                        sprite_holder.sprite.update_texture_data(texture_data);
+                        sprite_holder.animation = tileset
+                            .animation_frames_holder
+                            .get(&tile_update.tile_id)
+                            .map(|frames| Animation::new(Rc::clone(frames)));
+                    })
+                    .or_insert_with(|| {
+                        let mut sprite_holder =
+                            SpriteHolder::from_tileset(tileset, tile_update.tile_id)
+                                .unwrap_or_else(|| {
+                                    panic!(format!(
+                                        "Tried to insert tile {} but could not create sprite!",
+                                        tile_update.tile_id
+                                    ));
+                                });
+                        sprite_holder.sprite.set_anchor(0.0, 0.0);
+                        let [x, y] = tile_update.position;
+                        sprite_holder.sprite.set_position(x as f64, y as f64);
+                        sprite_holder
+                    });
+            }
+        }
+    }
 }
 
 impl Updatable for Map {
@@ -75,4 +120,10 @@ impl Drawable for Map {
             });
         });
     }
+}
+
+pub struct TileUpdate {
+    pub layer: usize,
+    pub position: TilePosition,
+    pub tile_id: u32,
 }

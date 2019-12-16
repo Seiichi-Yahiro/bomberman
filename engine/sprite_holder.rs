@@ -21,13 +21,24 @@ impl SpriteHolder {
             sprite: PistonSprite::from_texture_data(
                 tileset.texture_holder.get_texture_data(tile_id)?,
             ),
-            animation: tileset
-                .animation_frames_holder
-                .get(&tile_id)
-                .map(|frames| Animation::new(Rc::clone(frames))),
+            animation: Self::get_animation(&tileset, tile_id),
             default_tile_id: tile_id,
             tileset,
         })
+    }
+
+    pub fn update_tile_id(&mut self, tile_id: u32) {
+        if let Some(texture_data) = self.tileset.texture_holder.get_texture_data(tile_id) {
+            self.sprite.update_texture_data(texture_data);
+            self.animation = Self::get_animation(&self.tileset, tile_id);
+        }
+    }
+
+    fn get_animation(tileset: &Rc<Tileset>, tile_id: u32) -> Option<Animation> {
+        tileset
+            .animation_frames_holder
+            .get(&tile_id)
+            .map(|frames| Animation::new(Rc::clone(frames)))
     }
 }
 
