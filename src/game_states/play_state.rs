@@ -2,8 +2,10 @@
 //use crate::players::PlayerManager;
 use crate::arenas::object_groups::{ArenaObjectGroup, SoftBlockAreasProperties};
 use engine::asset::Tilemap;
+use engine::event::Event as MapEvent;
 use engine::game_state::*;
 use engine::map::{Map, TileUpdate};
+use std::rc::Rc;
 
 const MAP_ID: &str = "ashlands";
 
@@ -45,7 +47,7 @@ impl PlayState {
                 .unwrap_or(false)
         };
 
-        let soft_blocks: Vec<TileUpdate> = self
+        let soft_blocks: Vec<MapEvent> = self
             .map
             .tilemap
             .object_groups
@@ -58,17 +60,28 @@ impl PlayState {
                     .properties
                     .get(SoftBlockAreasProperties::RenderLayer.as_str())
                     .and_then(|property_value| match property_value {
-                        tiled::PropertyValue::IntValue(layer_id) => Some(TileUpdate {
-                            layer: *layer_id as usize,
-                            position: [object.x as u32, object.y as u32],
-                            tile_id: object.gid,
-                        }),
+                        tiled::PropertyValue::IntValue(layer_id) => {
+                            let tileset = Rc::clone(&self.map.tilemap.tileset);
+                            let mut event = MapEvent::from_tileset(
+                                tileset,
+                                object.gid,
+                                layer_id.abs() as usize,
+                            );
+                            event.sprite_holder.sprite.set_anchor(0.0, 0.0);
+                            event
+                                .sprite_holder
+                                .sprite
+                                .set_position(object.x as f64, object.y as f64);
+                            Some(event)
+                        }
                         _ => None,
                     })
             })
             .collect();
 
-        self.map.update_tiles(soft_blocks);
+        soft_blocks.into_iter().for_each(|event| {
+            self.map.events.insert(event);
+        });
     }
 }
 

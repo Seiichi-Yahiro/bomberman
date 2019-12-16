@@ -2,7 +2,7 @@ pub mod animation;
 mod app;
 mod asset_storage;
 pub mod character;
-mod event;
+pub mod event;
 pub mod map;
 mod sprite_holder;
 mod state_manager;

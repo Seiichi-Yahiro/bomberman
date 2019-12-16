@@ -1,5 +1,5 @@
 use crate::animation::Animation;
-use crate::event::{Event, EventId};
+use crate::event::{Event, EventId, EventsHolder};
 use crate::sprite_holder::SpriteHolder;
 use crate::texture_holder::SpriteTextureDataExt;
 use crate::tilemap::Tilemap;
@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Map {
-    pub events: HashMap<EventId, Event>,
+    pub events: EventsHolder,
     pub tiles: Vec<HashMap<TilePosition, SpriteHolder>>,
     pub tilemap: Rc<Tilemap>,
 }
@@ -19,7 +19,7 @@ pub struct Map {
 impl Map {
     pub fn from_tilemap(tilemap: Rc<Tilemap>) -> Map {
         Map {
-            events: HashMap::new(),
+            events: EventsHolder::new(),
             tiles: tilemap
                 .tiles
                 .iter()
@@ -98,6 +98,7 @@ impl Updatable for Map {
 
 impl Drawable for Map {
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
+        let grouped_events = self.events.group_by_layers();
         self.tiles.iter().for_each(|layer| {
             layer.iter().for_each(|(_, sprite)| {
                 sprite.draw(c, g);
