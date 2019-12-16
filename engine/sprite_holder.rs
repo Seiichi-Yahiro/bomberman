@@ -3,7 +3,6 @@ use crate::asset_storage::AssetStorage;
 use crate::texture_holder::{SpriteTextureDataExt, TextureData};
 use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use crate::world::World;
 use graphics::Context;
 use opengl_graphics::{GlGraphics, Texture};
 use sprite::Sprite as PistonSprite;
@@ -17,18 +16,6 @@ pub struct SpriteHolder {
 }
 
 impl SpriteHolder {
-    /*    pub fn new(
-        tile_id: u32,
-        texture_data: TextureData,
-        animation_frames: Option<Rc<Vec<Frame>>>,
-    ) -> SpriteHolder {
-        SpriteHolder {
-            sprite: PistonSprite::from_texture_data(texture_data),
-            animation: animation_frames.map(|frames| Animation::new(frames)),
-            default_tile_id: tile_id,
-        }
-    }*/
-
     pub fn from_tileset(tileset: Rc<Tileset>, tile_id: u32) -> Option<SpriteHolder> {
         Some(SpriteHolder {
             sprite: PistonSprite::from_texture_data(
@@ -45,7 +32,7 @@ impl SpriteHolder {
 }
 
 impl Updatable for SpriteHolder {
-    fn update(&mut self, _world: &mut World, dt: f64) {
+    fn update(&mut self, dt: f64) {
         let default_tile_id = self.default_tile_id;
         let tile_id = self
             .animation
@@ -66,7 +53,7 @@ impl Updatable for SpriteHolder {
 }
 
 impl Drawable for SpriteHolder {
-    fn draw(&self, _world: &World, c: &Context, g: &mut GlGraphics) {
+    fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.sprite.draw(c.transform, g);
     }
 }

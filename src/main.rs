@@ -12,5 +12,5 @@ fn main() {
         EventSettings::new(),
         OpenGL::V4_5,
     )
-    .run(Box::new(PlayState::new()));
+    .run(PlayState::build());
 }

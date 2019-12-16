@@ -11,7 +11,6 @@ mod tilemap;
 mod tileset;
 mod traits;
 mod utils;
-mod world;
 
 pub mod prelude {
     pub use super::app::App;
@@ -23,7 +22,6 @@ pub mod game_state {
     pub use super::asset_storage::AssetStorage;
     pub use super::state_manager::*;
     pub use super::traits::game_loop_event::*;
-    pub use super::world::World;
     pub use piston::input::*;
 }
 

@@ -1,6 +1,6 @@
 use crate::asset_storage::AssetStorage;
+use crate::state_manager::StateContext;
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use crate::world::World;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -98,7 +98,7 @@ impl Animation {
 }
 
 impl Updatable for Animation {
-    fn update(&mut self, _world: &mut World, dt: f64) {
+    fn update(&mut self, dt: f64) {
         self.update(dt);
     }
 }

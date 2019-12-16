@@ -5,7 +5,6 @@ use crate::tilemap::Tilemap;
 use crate::tileset::{TileId, TilePosition, Tileset, TilesetId};
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use crate::utils::flatten_2d;
-use crate::world::World;
 use graphics::Context;
 use opengl_graphics::GlGraphics;
 use std::collections::HashMap;
@@ -29,12 +28,14 @@ impl Map {
                 .map(|layer| {
                     layer
                         .iter()
-                        .map(|(&position, &tile_id)| {
-                            (
-                                position,
-                                SpriteHolder::from_tileset(Rc::clone(&tilemap.tileset), tile_id)
-                                    .unwrap(),
-                            )
+                        .filter_map(|(&position, &tile_id)| {
+                            let mut sprite_holder =
+                                SpriteHolder::from_tileset(Rc::clone(&tilemap.tileset), tile_id)?;
+                            sprite_holder.sprite.set_anchor(0.0, 0.0);
+                            let [x, y] = position;
+                            sprite_holder.sprite.set_position(x as f64, y as f64);
+
+                            Some((position, sprite_holder))
                         })
                         .collect()
                 })
@@ -57,20 +58,20 @@ impl Map {
 }
 
 impl Updatable for Map {
-    fn update(&mut self, world: &mut World, dt: f64) {
+    fn update(&mut self, dt: f64) {
         self.tiles.iter_mut().for_each(|layer| {
             layer.iter_mut().for_each(|(_, sprite)| {
-                sprite.update(world, dt);
+                sprite.update(dt);
             });
         });
     }
 }
 
 impl Drawable for Map {
-    fn draw(&self, world: &World, c: &Context, g: &mut GlGraphics) {
+    fn draw(&self, c: &Context, g: &mut GlGraphics) {
         self.tiles.iter().for_each(|layer| {
             layer.iter().for_each(|(_, sprite)| {
-                sprite.draw(world, c, g);
+                sprite.draw(c, g);
             });
         });
     }

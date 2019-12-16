@@ -3,6 +3,7 @@ use crate::sprite_holder::SpriteHolder;
 use crate::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::flatten_2d;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -67,7 +68,12 @@ impl Asset for Tilemap {
         Self: Sized,
     {
         let path = Path::new(path);
-        if !path.is_file() || !path.ends_with(".tmx") {
+        let is_tmx = path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map_or(false, |ext| ext == "tmx");
+
+        if !path.is_file() || !is_tmx {
             panic!(format!("{} is not a .tmx file!", path.display()));
         }
 
