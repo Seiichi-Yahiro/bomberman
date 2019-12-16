@@ -4,6 +4,8 @@ use engine::asset::Tilemap;
 use engine::game_state::*;
 use engine::map::Map;
 
+const MAP_ID: &str = "ashlands";
+
 pub struct PlayState {
     map: Map,
 }
@@ -14,14 +16,12 @@ impl PlayState {
             prepare: vec![Box::new(|asset_storage| {
                 asset_storage.load_asset_from_file::<Tilemap>(
                     std::path::Path::new("assets/textures/arena_tiles/ashlands.tmx"),
-                    "map_id".to_string(),
+                    MAP_ID,
                 );
             })],
             create: Box::new(|asset_storage| {
                 Box::new(PlayState {
-                    map: Map::from_tilemap(
-                        asset_storage.get_asset::<Tilemap>("map_id".to_string()),
-                    ),
+                    map: Map::from_tilemap(asset_storage.get_asset::<Tilemap>(MAP_ID)),
                 })
             }),
         }

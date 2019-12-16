@@ -22,18 +22,18 @@ impl AssetStorage {
         }
     }
 
-    pub fn load_asset_from_file<A: Asset>(&mut self, path: &Path, id: String) {
+    pub fn load_asset_from_file<A: Asset>(&mut self, path: &Path, id: &str) {
         let asset = A::load_from_file(path);
-        self.storage.insert(id, Rc::new(asset));
+        self.storage.insert(id.to_string(), Rc::new(asset));
     }
 
-    pub fn release_asset(&mut self, id: String) {
-        self.storage.remove(&id);
+    pub fn release_asset(&mut self, id: &str) {
+        self.storage.remove(id);
     }
 
-    pub fn get_asset<A: Asset>(&self, id: String) -> Rc<A> {
+    pub fn get_asset<A: Asset>(&self, id: &str) -> Rc<A> {
         self.storage
-            .get(&id)
+            .get(id)
             .map(|asset| Rc::clone(asset).downcast::<A>().unwrap())
             .unwrap()
     }
