@@ -13,6 +13,7 @@ pub type TileId = u32;
 pub struct Tileset {
     pub texture_holder: TextureHolder,
     pub animation_frames_holder: HashMap<TileId, Rc<Vec<Frame>>>,
+    pub properties: HashMap<TileId, tiled::Properties>,
 }
 
 impl Tileset {
@@ -20,6 +21,11 @@ impl Tileset {
         Tileset {
             texture_holder: TextureHolder::from_tileset(&tileset, folder),
             animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
+            properties: tileset
+                .tiles
+                .iter()
+                .map(|tile| (tile.id + tileset.first_gid, tile.properties.clone()))
+                .collect(),
         }
     }
 

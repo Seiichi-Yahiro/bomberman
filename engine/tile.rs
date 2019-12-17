@@ -110,10 +110,3 @@ impl Drawable for LayerTilesHolder {
         });
     }
 }
-
-pub enum Direction {
-    Down,
-    Up,
-    Left,
-    Right,
-}

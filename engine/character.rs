@@ -77,26 +77,5 @@ impl GameLoopEvent<()> for Character {
     }
 }
 
-#[derive(Eq, PartialEq, Hash)]
-pub enum PlayerFaceDirection {
-    Down,
-    Up,
-    Left,
-    Right,
-}
 
-impl From<&str> for PlayerFaceDirection {
-    fn from(face_direction: &str) -> Self {
-        match face_direction {
-            "down" => PlayerFaceDirection::Down,
-            "up" => PlayerFaceDirection::Up,
-            "left" => PlayerFaceDirection::Left,
-            "right" => PlayerFaceDirection::Right,
-            _ => panic!(format!(
-                "Cannot create PlayerFaceDirection from {}",
-                face_direction
-            )),
-        }
-    }
-}
 */

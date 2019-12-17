@@ -109,3 +109,64 @@ impl From<u32> for PlayerId {
     }
 }
 */
+
+use engine::asset::{TileId, Tileset};
+use engine::tile::TileUuid;
+use std::collections::HashMap;
+
+pub struct Player {
+    pub id: TileUuid,
+    pub face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
+}
+
+impl Player {
+    pub fn new(
+        id: TileUuid,
+        face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
+    ) -> Player {
+        Player {
+            id,
+            face_directions_to_tile_ids,
+        }
+    }
+
+    pub fn map_face_directions_to_tile_ids(
+        tileset: &Tileset,
+    ) -> HashMap<PlayerFaceDirection, TileId> {
+        tileset
+            .properties
+            .iter()
+            .filter_map(
+                |(&tile_id, properties)| match properties.get("face_direction") {
+                    Some(tiled::PropertyValue::StringValue(face_direction)) => {
+                        Some((PlayerFaceDirection::from(face_direction.as_ref()), tile_id))
+                    }
+                    _ => None,
+                },
+            )
+            .collect()
+    }
+}
+
+#[derive(Eq, PartialEq, Hash)]
+pub enum PlayerFaceDirection {
+    Down,
+    Up,
+    Left,
+    Right,
+}
+
+impl From<&str> for PlayerFaceDirection {
+    fn from(face_direction: &str) -> Self {
+        match face_direction {
+            "down" => PlayerFaceDirection::Down,
+            "up" => PlayerFaceDirection::Up,
+            "left" => PlayerFaceDirection::Left,
+            "right" => PlayerFaceDirection::Right,
+            _ => panic!(format!(
+                "Cannot create PlayerFaceDirection from {}",
+                face_direction
+            )),
+        }
+    }
+}
