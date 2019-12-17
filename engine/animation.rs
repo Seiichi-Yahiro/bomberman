@@ -8,7 +8,8 @@ pub struct Frame {
 }
 
 pub struct Animation {
-    is_playing: bool,
+    is_stopped: bool,
+    is_paused: bool,
     current_frame: usize,
     frame_time: f64,
     frames: Rc<Vec<Frame>>,
@@ -17,7 +18,8 @@ pub struct Animation {
 impl Animation {
     pub fn new(frames: Rc<Vec<Frame>>) -> Animation {
         Animation {
-            is_playing: false,
+            is_stopped: true,
+            is_paused: false,
             current_frame: 0,
             frame_time: 0.0,
             frames,
@@ -29,25 +31,31 @@ impl Animation {
     }
 
     pub fn play(&mut self) {
-        self.is_playing = true;
+        self.is_paused = false;
+        self.is_stopped = false;
     }
 
     pub fn pause(&mut self) {
-        self.is_playing = false;
+        self.is_paused = true;
     }
 
     pub fn stop(&mut self) {
-        self.is_playing = false;
+        self.is_stopped = true;
+        self.is_paused = false;
         self.current_frame = 0;
         self.frame_time = 0.0;
     }
 
-    pub fn is_playing(&self) -> bool {
-        self.is_playing
+    pub fn is_paused(&self) -> bool {
+        self.is_paused
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.is_stopped
     }
 
     pub fn update(&mut self, dt: f64) {
-        if !self.is_playing {
+        if self.is_paused || self.is_stopped {
             return;
         }
 
@@ -141,12 +149,12 @@ mod tests {
             animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
         };
 
-        let mut animation = Animation::new(tileset.animation_frames_holder[2 + gid]);
+        let mut animation = Animation::new(Rc::clone(&tileset.animation_frames_holder[&(2 + gid)]));
 
         let mut result = Vec::new();
 
-        animation.start();
         result.push(animation.get_current_tile_id());
+        animation.play();
 
         animation.update(100.0 / 1000.0);
         result.push(animation.get_current_tile_id());
@@ -163,9 +171,6 @@ mod tests {
         animation.update(200.0 / 1000.0);
         result.push(animation.get_current_tile_id());
 
-        assert_eq!(
-            result.as_ref(),
-            [2 + gid, 0 + gid, 2 + gid, 1 + gid, 2 + gid, 0 + gid]
-        );
+        assert_eq!(result.as_ref(), [gid, gid, 2 + gid, 1 + gid, 2 + gid, gid]);
     }
 }

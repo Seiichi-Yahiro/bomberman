@@ -49,7 +49,7 @@ impl Updatable for SpriteHolder {
             .animation
             .as_mut()
             .map_or(default_tile_id, |animation| {
-                if animation.is_playing() {
+                if !animation.is_stopped() {
                     animation.update(dt);
                     animation.get_current_tile_id()
                 } else {
