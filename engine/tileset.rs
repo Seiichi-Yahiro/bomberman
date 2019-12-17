@@ -2,13 +2,12 @@ use crate::animation::{Animation, Frame};
 use crate::asset_storage::Asset;
 use crate::texture_holder::TextureHolder;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::path::Path;
 use std::rc::Rc;
-use uuid::Uuid;
 
 pub type TilePosition = [u32; 2];
 pub type TileId = u32;
-pub type TilesetId = Uuid;
 
 #[derive(Default)]
 pub struct Tileset {
@@ -36,7 +35,12 @@ impl Asset for Tileset {
     where
         Self: Sized,
     {
-        if !path.is_file() || !path.ends_with(".xml") {
+        let is_xml = path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map_or(false, |ext| ext == "xml");
+
+        if !path.is_file() || !is_xml {
             panic!(format!("{} is not a .xml file!", path.display()));
         }
 

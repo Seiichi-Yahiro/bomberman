@@ -40,8 +40,8 @@ impl Drawable for Tile {
 
 #[derive(Default)]
 pub struct LayerTilesHolder {
-    events: HashMap<TileUuid, Tile>,
-    event_positions: HashMap<TilePosition, TileUuid>,
+    tiles: HashMap<TileUuid, Tile>,
+    tiles_positions: HashMap<TilePosition, TileUuid>,
 }
 
 impl LayerTilesHolder {
@@ -49,62 +49,64 @@ impl LayerTilesHolder {
         LayerTilesHolder::default()
     }
 
-    pub fn insert(&mut self, event: Tile) -> Option<Tile> {
-        let (x, y) = event.sprite_holder.sprite.get_position();
-        self.event_positions.insert([x as u32, y as u32], event.id);
-        self.events.insert(event.id, event)
+    pub fn insert(&mut self, tile: Tile) -> Option<Tile> {
+        let (x, y) = tile.sprite_holder.sprite.get_position();
+        if let Some(prev_id) = self.tiles_positions.insert([x as u32, y as u32], tile.id) {
+            self.remove(prev_id);
+        }
+        self.tiles.insert(tile.id, tile)
     }
 
     pub fn remove(&mut self, id: TileUuid) -> Option<Tile> {
-        self.events.remove(&id).map(|event| {
-            let (x, y) = event.sprite_holder.sprite.get_position();
-            self.event_positions.remove(&[x as u32, y as u32]);
-            event
+        self.tiles.remove(&id).map(|tile| {
+            let (x, y) = tile.sprite_holder.sprite.get_position();
+            self.tiles_positions.remove(&[x as u32, y as u32]);
+            tile
         })
     }
 
     pub fn set_position(&mut self, id: TileUuid, position: TilePosition) {
-        self.remove(id).and_then(|mut event| {
+        if let Some(mut tile) = self.remove(id) {
             let [x, y] = position;
-            event.sprite_holder.sprite.set_position(x as f64, y as f64);
-            self.insert(event)
-        });
+            tile.sprite_holder.sprite.set_position(x as f64, y as f64);
+            self.insert(tile);
+        }
     }
 
-    pub fn get_event_by_id(&self, id: TileUuid) -> Option<&Tile> {
-        self.events.get(&id)
+    pub fn get_tile_by_id(&self, id: TileUuid) -> Option<&Tile> {
+        self.tiles.get(&id)
     }
 
-    pub fn get_mut_event_by_id(&mut self, id: TileUuid) -> Option<&mut Tile> {
-        self.events.get_mut(&id)
+    pub fn get_mut_tile_by_id(&mut self, id: TileUuid) -> Option<&mut Tile> {
+        self.tiles.get_mut(&id)
     }
 
-    pub fn get_event_by_position(&self, position: TilePosition) -> Option<&Tile> {
-        self.event_positions
+    pub fn get_tile_by_position(&self, position: TilePosition) -> Option<&Tile> {
+        self.tiles_positions
             .get(&position)
-            .and_then(|&id| self.get_event_by_id(id))
+            .and_then(|&id| self.get_tile_by_id(id))
     }
 
-    pub fn get_mut_event_by_position(&mut self, position: TilePosition) -> Option<&mut Tile> {
-        self.event_positions
+    pub fn get_mut_tile_by_position(&mut self, position: TilePosition) -> Option<&mut Tile> {
+        self.tiles_positions
             .get(&position)
             .cloned()
-            .and_then(move |id| self.get_mut_event_by_id(id))
+            .and_then(move |id| self.get_mut_tile_by_id(id))
     }
 }
 
 impl Updatable for LayerTilesHolder {
     fn update(&mut self, dt: f64) {
-        self.events.iter_mut().for_each(|event| {
-            event.1.sprite_holder.update(dt);
+        self.tiles.iter_mut().for_each(|tile| {
+            tile.1.sprite_holder.update(dt);
         });
     }
 }
 
 impl Drawable for LayerTilesHolder {
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.events.iter().for_each(|event| {
-            event.1.sprite_holder.draw(c, g);
+        self.tiles.iter().for_each(|tile| {
+            tile.1.sprite_holder.draw(c, g);
         });
     }
 }

@@ -24,12 +24,14 @@ impl Map {
                     let mut map_events_holder = LayerTilesHolder::new();
 
                     for (&position, &tile_id) in layer.iter() {
-                        if let Some(map_event) =
+                        if let Some(mut map_event) =
                             Tile::from_tileset(Rc::clone(&tilemap.tileset), tile_id, layer_index)
                         {
-                            let id = map_event.id;
+                            map_event
+                                .sprite_holder
+                                .sprite
+                                .set_position(position[0] as f64, position[1] as f64);
                             map_events_holder.insert(map_event);
-                            map_events_holder.set_position(id, position);
                         }
                     }
 

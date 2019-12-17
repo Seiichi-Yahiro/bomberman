@@ -19,14 +19,15 @@ impl Tilemap {
         let convert_layer_to_tiles = |layer: &tiled::Layer| {
             flatten_2d(&layer.tiles)
                 .into_iter()
-                .map(|(row, column, &tile_id)| {
-                    (
+                .filter_map(|(row, column, &tile_id)| match tile_id {
+                    0 => None,
+                    _ => Some((
                         [
                             column as u32 * tilemap.tile_width,
                             row as u32 * tilemap.tile_height,
                         ],
                         tile_id,
-                    )
+                    )),
                 })
                 .collect()
         };
