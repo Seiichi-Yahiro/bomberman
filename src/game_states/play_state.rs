@@ -1,11 +1,14 @@
 //use crate::arenas::ArenaManager;
 //use crate::players::PlayerManager;
-use crate::arenas::object_groups::{ArenaObjectGroup, SoftBlockAreasProperties};
+use crate::arenas::object_groups::{
+    ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
+};
 use crate::players::{Player, PlayerFaceDirection};
-use engine::asset::{Tilemap, Tileset};
+use engine::asset::{TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
 use engine::tile::Tile;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 const TILEMAP_ID: &str = "ashlands";
@@ -38,13 +41,16 @@ impl PlayState {
                 );
             })],
             create: Box::new(|asset_storage| {
+                let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
+                let player_spawns = Self::get_player_spawns(&tilemap);
+
                 let (player1, player1_tile) =
-                    Self::create_player(asset_storage, PLAYER_1_TILESET_ID, 32.0, 32.0);
+                    Self::create_player(asset_storage, PLAYER_1_TILESET_ID, player_spawns[&0]);
                 let (player2, player2_tile) =
-                    Self::create_player(asset_storage, PLAYER_2_TILESET_ID, 416.0, 352.0);
+                    Self::create_player(asset_storage, PLAYER_2_TILESET_ID, player_spawns[&1]);
 
                 let mut play_state = PlayState {
-                    map: Map::from_tilemap(asset_storage.get_asset::<Tilemap>(TILEMAP_ID)),
+                    map: Map::from_tilemap(tilemap),
                     player1,
                     player2,
                 };
@@ -61,8 +67,7 @@ impl PlayState {
     fn create_player(
         asset_storage: &AssetStorage,
         tileset_id: &str,
-        x: f64,
-        y: f64,
+        position: TilePosition,
     ) -> (Player, Tile) {
         let tileset = asset_storage.get_asset::<Tileset>(tileset_id);
         let face_directions_to_tile_ids = Player::map_face_directions_to_tile_ids(&tileset);
@@ -74,7 +79,11 @@ impl PlayState {
         )
         .unwrap();
 
-        player_tile.sprite_holder.sprite.set_position(x, y);
+        let [x, y] = position;
+        player_tile
+            .sprite_holder
+            .sprite
+            .set_position(x as f64, y as f64);
         player_tile.sprite_holder.animation.as_mut().unwrap().play();
 
         let player = Player::new(player_tile.id, face_directions_to_tile_ids);
@@ -129,6 +138,26 @@ impl PlayState {
                 layer.insert(event);
             }
         });
+    }
+
+    fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
+        tilemap
+            .object_groups
+            .get(ArenaObjectGroup::PlayerSpawns.as_str())
+            .iter()
+            .flat_map(|objects| objects.iter())
+            .filter_map(|object| {
+                object
+                    .properties
+                    .get(PlayerSpawnsProperties::PlayerId.as_str())
+                    .and_then(|property_value| match property_value {
+                        tiled::PropertyValue::IntValue(player_id) => {
+                            Some((*player_id, [object.x as u32, object.y as u32]))
+                        }
+                        _ => None,
+                    })
+            })
+            .collect()
     }
 }
 
