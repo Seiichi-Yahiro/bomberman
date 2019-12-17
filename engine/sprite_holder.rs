@@ -16,9 +16,8 @@ pub struct SpriteHolder {
 
 impl SpriteHolder {
     pub fn from_tileset(tileset: Rc<Tileset>, tile_id: u32) -> Option<SpriteHolder> {
-        let mut sprite =
+        let sprite =
             PistonSprite::from_texture_data(tileset.texture_holder.get_texture_data(tile_id)?);
-        sprite.set_anchor(0.0, 0.0);
 
         Some(SpriteHolder {
             sprite,

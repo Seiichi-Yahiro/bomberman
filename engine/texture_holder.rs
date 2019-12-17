@@ -164,7 +164,9 @@ pub trait SpriteTextureDataExt {
 
 impl SpriteTextureDataExt for Sprite<Texture> {
     fn from_texture_data(texture_data: TextureData) -> Self {
-        Sprite::from_texture_rect(texture_data.texture, texture_data.src_rect)
+        let mut sprite = Sprite::from_texture_rect(texture_data.texture, texture_data.src_rect);
+        sprite.set_anchor(0.0, 0.0);
+        sprite
     }
 
     fn update_texture_data(&mut self, texture_data: TextureData) {
