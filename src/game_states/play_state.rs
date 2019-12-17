@@ -2,9 +2,9 @@
 //use crate::players::PlayerManager;
 use crate::arenas::object_groups::{ArenaObjectGroup, SoftBlockAreasProperties};
 use engine::asset::Tilemap;
-use engine::event::Event as MapEvent;
 use engine::game_state::*;
-use engine::map::{Map, TileUpdate};
+use engine::map::Map;
+use engine::tile::Tile;
 use std::rc::Rc;
 
 const MAP_ID: &str = "ashlands";
@@ -47,7 +47,7 @@ impl PlayState {
                 .unwrap_or(false)
         };
 
-        let soft_blocks: Vec<MapEvent> = self
+        let soft_blocks: Vec<Tile> = self
             .map
             .tilemap
             .object_groups
@@ -62,12 +62,8 @@ impl PlayState {
                     .and_then(|property_value| match property_value {
                         tiled::PropertyValue::IntValue(layer_id) => {
                             let tileset = Rc::clone(&self.map.tilemap.tileset);
-                            let mut event = MapEvent::from_tileset(
-                                tileset,
-                                object.gid,
-                                layer_id.abs() as usize,
-                            );
-                            event.sprite_holder.sprite.set_anchor(0.0, 0.0);
+                            let mut event =
+                                Tile::from_tileset(tileset, object.gid, layer_id.abs() as usize)?;
                             event
                                 .sprite_holder
                                 .sprite
@@ -80,7 +76,10 @@ impl PlayState {
             .collect();
 
         soft_blocks.into_iter().for_each(|event| {
-            self.map.events.insert(event);
+            self.map
+                .tiles
+                .get_mut(event.layer)
+                .and_then(|layer| layer.insert(event));
         });
     }
 }

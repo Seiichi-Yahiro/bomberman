@@ -1,48 +1,46 @@
 use crate::animation::Animation;
-use crate::event::{Event, EventId, EventsHolder};
-use crate::sprite_holder::SpriteHolder;
 use crate::texture_holder::SpriteTextureDataExt;
+use crate::tile::{LayerTilesHolder, Tile};
 use crate::tilemap::Tilemap;
 use crate::tileset::TilePosition;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::Context;
 use opengl_graphics::GlGraphics;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Map {
-    pub events: EventsHolder,
-    pub tiles: Vec<HashMap<TilePosition, SpriteHolder>>,
+    pub tiles: Vec<LayerTilesHolder>,
     pub tilemap: Rc<Tilemap>,
 }
 
 impl Map {
     pub fn from_tilemap(tilemap: Rc<Tilemap>) -> Map {
         Map {
-            events: EventsHolder::new(),
             tiles: tilemap
                 .tiles
                 .iter()
-                .map(|layer| {
-                    layer
-                        .iter()
-                        .filter_map(|(&position, &tile_id)| {
-                            let mut sprite_holder =
-                                SpriteHolder::from_tileset(Rc::clone(&tilemap.tileset), tile_id)?;
-                            sprite_holder.sprite.set_anchor(0.0, 0.0);
-                            let [x, y] = position;
-                            sprite_holder.sprite.set_position(x as f64, y as f64);
+                .enumerate()
+                .map(|(layer_index, layer)| {
+                    let mut map_events_holder = LayerTilesHolder::new();
 
-                            Some((position, sprite_holder))
-                        })
-                        .collect()
+                    for (&position, &tile_id) in layer.iter() {
+                        if let Some(map_event) =
+                            Tile::from_tileset(Rc::clone(&tilemap.tileset), tile_id, layer_index)
+                        {
+                            let id = map_event.id;
+                            map_events_holder.insert(map_event);
+                            map_events_holder.set_position(id, position);
+                        }
+                    }
+
+                    map_events_holder
                 })
                 .collect(),
             tilemap,
         }
     }
 
-    pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {
+    /*pub fn update_tiles(&mut self, tile_updates: Vec<TileUpdate>) {
         tile_updates
             .into_iter()
             .for_each(|tile_update| self.update_tile(tile_update));
@@ -58,57 +56,42 @@ impl Map {
             let tileset = Rc::clone(&self.tilemap.tileset);
 
             if let Some(layer) = self.tiles.get_mut(tile_update.layer) {
-                layer
-                    .entry(tile_update.position)
-                    .and_modify(|sprite_holder| {
-                        sprite_holder.sprite.update_texture_data(texture_data);
-                        sprite_holder.animation = tileset
-                            .animation_frames_holder
-                            .get(&tile_update.tile_id)
-                            .map(|frames| Animation::new(Rc::clone(frames)));
-                    })
-                    .or_insert_with(|| {
-                        let mut sprite_holder =
-                            SpriteHolder::from_tileset(tileset, tile_update.tile_id)
-                                .unwrap_or_else(|| {
-                                    panic!(format!(
-                                        "Tried to insert tile {} but could not create sprite!",
-                                        tile_update.tile_id
-                                    ));
-                                });
-                        sprite_holder.sprite.set_anchor(0.0, 0.0);
-                        let [x, y] = tile_update.position;
-                        sprite_holder.sprite.set_position(x as f64, y as f64);
-                        sprite_holder
-                    });
+                if let Some(event) = layer.get_mut_event_by_position(tile_update.position) {
+                    event.sprite_holder.sprite.update_texture_data(texture_data);
+                    event.sprite_holder.animation = tileset
+                        .animation_frames_holder
+                        .get(&tile_update.tile_id)
+                        .map(|frames| Animation::new(Rc::clone(frames)));
+                } else if let Some(event) =
+                    MapEvent::from_tileset(tileset, tile_update.tile_id, tile_update.layer)
+                {
+                    let id = event.id;
+                    layer.insert(event);
+                    layer.set_position(id, tile_update.position);
+                }
             }
         }
-    }
+    }*/
 }
 
 impl Updatable for Map {
     fn update(&mut self, dt: f64) {
         self.tiles.iter_mut().for_each(|layer| {
-            layer.iter_mut().for_each(|(_, sprite)| {
-                sprite.update(dt);
-            });
+            layer.update(dt);
         });
     }
 }
 
 impl Drawable for Map {
     fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        let grouped_events = self.events.group_by_layers();
         self.tiles.iter().for_each(|layer| {
-            layer.iter().for_each(|(_, sprite)| {
-                sprite.draw(c, g);
-            });
+            layer.draw(c, g);
         });
     }
 }
 
-pub struct TileUpdate {
+/*pub struct TileUpdate {
     pub layer: usize,
     pub position: TilePosition,
     pub tile_id: u32,
-}
+}*/

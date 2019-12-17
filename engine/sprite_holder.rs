@@ -16,10 +16,12 @@ pub struct SpriteHolder {
 
 impl SpriteHolder {
     pub fn from_tileset(tileset: Rc<Tileset>, tile_id: u32) -> Option<SpriteHolder> {
+        let mut sprite =
+            PistonSprite::from_texture_data(tileset.texture_holder.get_texture_data(tile_id)?);
+        sprite.set_anchor(0.0, 0.0);
+
         Some(SpriteHolder {
-            sprite: PistonSprite::from_texture_data(
-                tileset.texture_holder.get_texture_data(tile_id)?,
-            ),
+            sprite,
             animation: Self::get_animation(&tileset, tile_id),
             default_tile_id: tile_id,
             tileset,

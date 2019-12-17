@@ -29,7 +29,7 @@ impl Character {
             let texture_data = texture_holder.get_texture_data(*tile_id).unwrap();
             Sprite::from_texture_data(texture_data)
         };
-        sprite.set_anchor(0.0, 0.0);
+
         sprite.set_position(0.0, 0.0);
 
         Character {
