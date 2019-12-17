@@ -115,7 +115,7 @@ mod tests {
     use crate::tileset::Tileset;
 
     #[test]
-    fn test_animation() {
+    fn test_animation_update() {
         let tileset_str = "\
             <?xml version=\"1.0\" encoding=\"UTF-8\"?>
             <tileset version=\"1.2\" tiledversion=\"1.3.0\" name=\"player_tiles\" tilewidth=\"32\" tileheight=\"32\" tilecount=\"12\" columns=\"0\">
