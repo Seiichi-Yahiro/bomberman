@@ -1,5 +1,6 @@
 use crate::asset_storage::AssetStorage;
-use crate::state_manager::{GameStateBuilder, StateManager};
+use crate::game_state_builder::GameStateBuilder;
+use crate::state_manager::StateManager;
 use crate::traits::game_loop_event::*;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -31,9 +32,9 @@ impl App {
         }
     }
 
-    pub fn run(&mut self, builder: GameStateBuilder) {
+    pub fn run(&mut self, game_state_builder: GameStateBuilder) {
         let mut gl = GlGraphics::new(self.opengl_version);
-        let mut state_manager = StateManager::new(builder, &mut self.asset_storage);
+        let mut state_manager = StateManager::new(game_state_builder, &mut self.asset_storage);
 
         while let (Some(event), false) =
             (self.events.next(&mut self.window), state_manager.is_empty())

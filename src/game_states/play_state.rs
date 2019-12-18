@@ -22,24 +22,11 @@ pub struct PlayState {
 
 impl PlayState {
     pub fn build() -> GameStateBuilder {
-        GameStateBuilder {
-            prepare: vec![Box::new(|asset_storage| {
-                asset_storage.load_asset_from_file::<Tilemap>(
-                    std::path::Path::new("assets/textures/arena_tiles/ashlands.tmx"),
-                    TILEMAP_ID,
-                );
-
-                asset_storage.load_asset_from_file::<Tileset>(
-                    std::path::Path::new("assets/textures/player/player1.xml"),
-                    PLAYER_1_TILESET_ID,
-                );
-
-                asset_storage.load_asset_from_file::<Tileset>(
-                    std::path::Path::new("assets/textures/player/player2.xml"),
-                    PLAYER_2_TILESET_ID,
-                );
-            })],
-            create: Box::new(|asset_storage| {
+        GameStateBuilderBuilder::new()
+            .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
+            .load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
+            .load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
+            .build(|asset_storage| {
                 let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
                 let player_spawns = Self::get_player_spawns(&tilemap);
 
@@ -66,8 +53,7 @@ impl PlayState {
                 play_state.map.tiles[1].insert(player2_tile);
 
                 Box::new(play_state)
-            }),
-        }
+            })
     }
 
     fn create_player(

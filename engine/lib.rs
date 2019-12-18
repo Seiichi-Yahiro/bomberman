@@ -1,6 +1,7 @@
 pub mod animation;
 mod app;
 mod asset_storage;
+mod game_state_builder;
 pub mod map;
 mod sprite_holder;
 mod state_manager;
@@ -19,6 +20,7 @@ pub mod prelude {
 
 pub mod game_state {
     pub use super::asset_storage::AssetStorage;
+    pub use super::game_state_builder::*;
     pub use super::state_manager::*;
     pub use super::traits::game_loop_event::*;
     pub use piston::input::*;

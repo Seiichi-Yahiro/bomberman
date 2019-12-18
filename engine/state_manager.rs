@@ -1,18 +1,11 @@
 use crate::asset_storage::AssetStorage;
+use crate::game_state_builder::GameStateBuilder;
 use crate::traits::game_loop_event::*;
 
 pub trait GameState {
     fn handle_event(&mut self, state_context: &mut StateContext, event: &Event) -> bool;
     fn update(&mut self, state_context: &mut StateContext, dt: f64) -> bool;
     fn draw(&self, c: &Context, g: &mut GlGraphics);
-}
-
-type PrepareGameStateFn = Box<dyn FnOnce(&mut AssetStorage)>;
-type CreateGameStateFn = Box<dyn FnOnce(&AssetStorage) -> Box<dyn GameState>>;
-
-pub struct GameStateBuilder {
-    pub prepare: Vec<PrepareGameStateFn>,
-    pub create: CreateGameStateFn,
 }
 
 pub struct StateContext<'a, 's> {
@@ -32,9 +25,12 @@ pub struct StateManager {
 }
 
 impl StateManager {
-    pub fn new(builder: GameStateBuilder, asset_storage: &mut AssetStorage) -> StateManager {
+    pub fn new(
+        game_state_builder: GameStateBuilder,
+        asset_storage: &mut AssetStorage,
+    ) -> StateManager {
         StateManager {
-            stack: vec![Self::build_state(builder, asset_storage)],
+            stack: vec![(game_state_builder.build)(asset_storage)],
         }
     }
 
@@ -52,29 +48,18 @@ impl StateManager {
         while let Some(transition) = pending_transitions.pop() {
             match transition {
                 StateTransition::Push(builder) => {
-                    self.stack.push(Self::build_state(builder, asset_storage));
+                    self.stack.push((builder.build)(asset_storage));
                 }
                 StateTransition::Pop => {
                     self.stack.pop();
                 }
                 StateTransition::Switch(builder) => {
                     self.stack.pop();
-                    self.stack.push(Self::build_state(builder, asset_storage));
+                    self.stack.push((builder.build)(asset_storage));
                 }
                 StateTransition::Clear => self.stack.clear(),
             }
         }
-    }
-
-    fn build_state(
-        builder: GameStateBuilder,
-        asset_storage: &mut AssetStorage,
-    ) -> Box<dyn GameState> {
-        builder.prepare.into_iter().for_each(|load| {
-            load(asset_storage);
-        });
-
-        (builder.create)(asset_storage)
     }
 
     pub fn handle_event(&mut self, asset_storage: &mut AssetStorage, event: &Event) {
