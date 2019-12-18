@@ -4,7 +4,7 @@ use crate::arenas::object_groups::{
 use crate::players::{
     MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
 };
-use engine::asset::{TileId, TilePosition, Tilemap, Tileset};
+use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
 use engine::tile::{Tile, TileUuid};
@@ -151,12 +151,12 @@ impl PlayState {
     }
 
     fn create_soft_blocks(&mut self) {
-        let should_spawn_soft_block = |soft_block: &&tiled::Object| -> bool {
+        let should_spawn_soft_block = |soft_block: &&Object| -> bool {
             soft_block
                 .properties
                 .get(SoftBlockAreasProperties::SpawnChance.as_str())
                 .map(|property_value| match property_value {
-                    tiled::PropertyValue::FloatValue(spawn_chance) => {
+                    PropertyValue::FloatValue(spawn_chance) => {
                         rand::random::<f32>() <= *spawn_chance
                     }
                     _ => false,
@@ -177,7 +177,7 @@ impl PlayState {
                     .properties
                     .get(SoftBlockAreasProperties::RenderLayer.as_str())
                     .and_then(|property_value| match property_value {
-                        tiled::PropertyValue::IntValue(layer_id) => {
+                        PropertyValue::IntValue(layer_id) => {
                             let tileset = Rc::clone(&self.map.tilemap.tileset);
                             let mut event =
                                 Tile::from_tileset(tileset, object.gid, layer_id.abs() as usize)?;
@@ -210,7 +210,7 @@ impl PlayState {
                     .properties
                     .get(PlayerSpawnsProperties::PlayerId.as_str())
                     .and_then(|property_value| match property_value {
-                        tiled::PropertyValue::IntValue(player_id) => {
+                        PropertyValue::IntValue(player_id) => {
                             Some((*player_id, [object.x as u32, object.y as u32]))
                         }
                         _ => None,

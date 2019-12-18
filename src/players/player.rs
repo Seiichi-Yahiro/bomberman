@@ -1,7 +1,6 @@
-use engine::asset::{TileId, Tileset};
-use engine::game_state::EventHandler;
+use engine::asset::{PropertyValue, TileId, Tileset};
+use engine::game_state::{Button, Event, EventHandler, PressEvent, ReleaseEvent};
 use engine::tile::TileUuid;
-use piston::input::*;
 use std::collections::HashMap;
 
 pub type PlayerControlsMap = HashMap<Button, PlayerAction>;
@@ -38,7 +37,7 @@ impl Player {
             .iter()
             .filter_map(
                 |(&tile_id, properties)| match properties.get("face_direction") {
-                    Some(tiled::PropertyValue::StringValue(face_direction)) => {
+                    Some(PropertyValue::StringValue(face_direction)) => {
                         Some((PlayerFaceDirection::from(face_direction.as_ref()), tile_id))
                     }
                     _ => None,

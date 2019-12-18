@@ -32,4 +32,6 @@ pub mod asset {
     pub use super::asset_storage::*;
     pub use super::tilemap::*;
     pub use super::tileset::*;
+    pub use tiled::Object;
+    pub use tiled::PropertyValue;
 }
