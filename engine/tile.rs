@@ -82,16 +82,13 @@ impl LayerTilesHolder {
     }
 
     pub fn get_tile_by_position(&self, position: TilePosition) -> Option<&Tile> {
-        self.tiles_positions
-            .get(&position)
-            .and_then(|&id| self.get_tile_by_id(id))
+        let id = self.tiles_positions.get(&position).cloned()?;
+        self.get_tile_by_id(id)
     }
 
     pub fn get_mut_tile_by_position(&mut self, position: TilePosition) -> Option<&mut Tile> {
-        self.tiles_positions
-            .get(&position)
-            .cloned()
-            .and_then(move |id| self.get_mut_tile_by_id(id))
+        let id = self.tiles_positions.get(&position).cloned()?;
+        self.get_mut_tile_by_id(id)
     }
 }
 

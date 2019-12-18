@@ -75,31 +75,25 @@ impl Animation {
             .tiles
             .iter()
             .filter_map(|tile| {
-                tile.animation
-                    .as_ref()
+                let frames: Vec<Frame> = tile
+                    .animation
+                    .as_ref()?
+                    .iter()
                     .map(Self::convert_tiled_frames)
-                    .map(|frames| {
-                        frames
-                            .into_iter()
-                            .map(|mut frame| {
-                                frame.tile_id += tileset.first_gid;
-                                frame
-                            })
-                            .collect::<Vec<Frame>>()
+                    .map(|mut frame| {
+                        frame.tile_id += tileset.first_gid;
+                        frame
                     })
-                    .map(|frames| {
-                        let tile_id = tile.id + tileset.first_gid;
-                        (tile_id, Rc::new(frames))
-                    })
+                    .collect();
+
+                let tile_id = tile.id + tileset.first_gid;
+                Some((tile_id, Rc::new(frames)))
             })
             .collect()
     }
 
-    fn convert_tiled_frames(frames: &Vec<tiled::Frame>) -> Vec<Frame> {
-        frames
-            .iter()
-            .map(|frame| unsafe { std::mem::transmute(frame.clone()) })
-            .collect()
+    fn convert_tiled_frames(frame: &tiled::Frame) -> Frame {
+        unsafe { std::mem::transmute(frame.clone()) }
     }
 }
 
