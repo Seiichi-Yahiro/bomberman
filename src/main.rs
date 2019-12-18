@@ -1,7 +1,6 @@
 mod arenas;
 mod game_states;
 mod players;
-mod utils;
 
 use engine::prelude::*;
 use game_states::play_state::PlayState;

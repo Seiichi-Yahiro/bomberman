@@ -13,7 +13,6 @@ pub struct Tile {
     pub id: TileUuid,
     pub sprite_holder: SpriteHolder,
     pub layer: usize,
-    //direction: Direction,
 }
 
 impl Tile {
@@ -21,7 +20,7 @@ impl Tile {
         Some(Tile {
             id: Uuid::new_v4(),
             sprite_holder: SpriteHolder::from_tileset(tileset, tile_id)?,
-            layer, //direction: Direction::Down,
+            layer,
         })
     }
 }

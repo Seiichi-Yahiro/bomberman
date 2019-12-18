@@ -1,5 +1,3 @@
-//use crate::arenas::ArenaManager;
-//use crate::players::PlayerManager;
 use crate::arenas::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
