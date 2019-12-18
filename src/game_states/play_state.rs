@@ -3,7 +3,9 @@
 use crate::arenas::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
-use crate::players::{Player, PlayerFaceDirection};
+use crate::players::{
+    MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
+};
 use engine::asset::{TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
@@ -44,10 +46,18 @@ impl PlayState {
                 let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
                 let player_spawns = Self::get_player_spawns(&tilemap);
 
-                let (player1, player1_tile) =
-                    Self::create_player(asset_storage, PLAYER_1_TILESET_ID, player_spawns[&0]);
-                let (player2, player2_tile) =
-                    Self::create_player(asset_storage, PLAYER_2_TILESET_ID, player_spawns[&1]);
+                let (player1, player1_tile) = Self::create_player(
+                    PlayerId::Player1,
+                    asset_storage,
+                    PLAYER_1_TILESET_ID,
+                    player_spawns[&0],
+                );
+                let (player2, player2_tile) = Self::create_player(
+                    PlayerId::Player2,
+                    asset_storage,
+                    PLAYER_2_TILESET_ID,
+                    player_spawns[&1],
+                );
 
                 let mut play_state = PlayState {
                     map: Map::from_tilemap(tilemap),
@@ -65,6 +75,7 @@ impl PlayState {
     }
 
     fn create_player(
+        id: PlayerId,
         asset_storage: &AssetStorage,
         tileset_id: &str,
         position: TilePosition,
@@ -86,9 +97,61 @@ impl PlayState {
             .set_position(x as f64, y as f64);
         player_tile.sprite_holder.animation.as_mut().unwrap().play();
 
-        let player = Player::new(player_tile.id, face_directions_to_tile_ids);
+        let player = Player::new(
+            id,
+            player_tile.id,
+            face_directions_to_tile_ids,
+            Self::create_player_controls(id),
+        );
 
         (player, player_tile)
+    }
+
+    fn create_player_controls(player_id: PlayerId) -> PlayerControlsMap {
+        let mut controls = HashMap::new();
+
+        match player_id {
+            PlayerId::Player1 => {
+                controls.insert(
+                    Button::Keyboard(Key::Left),
+                    PlayerAction::Movement(MoveDirection::Left),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::Right),
+                    PlayerAction::Movement(MoveDirection::Right),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::Up),
+                    PlayerAction::Movement(MoveDirection::Up),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::Down),
+                    PlayerAction::Movement(MoveDirection::Down),
+                );
+            }
+            PlayerId::Player2 => {
+                controls.insert(
+                    Button::Keyboard(Key::A),
+                    PlayerAction::Movement(MoveDirection::Left),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::D),
+                    PlayerAction::Movement(MoveDirection::Right),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::W),
+                    PlayerAction::Movement(MoveDirection::Up),
+                );
+                controls.insert(
+                    Button::Keyboard(Key::S),
+                    PlayerAction::Movement(MoveDirection::Down),
+                );
+            }
+            PlayerId::Player3 => {}
+            PlayerId::Player4 => {}
+        }
+
+        controls
     }
 
     fn create_soft_blocks(&mut self) {
@@ -167,6 +230,9 @@ impl GameState for PlayState {
             (state_context.request_state_transition)(StateTransition::Clear);
             return false;
         }
+
+        self.player1.handle_event(event);
+        self.player2.handle_event(event);
 
         true
     }
