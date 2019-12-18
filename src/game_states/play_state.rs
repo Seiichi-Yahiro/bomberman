@@ -6,7 +6,7 @@ use crate::arenas::object_groups::{
 use crate::players::{
     MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
 };
-use engine::asset::{TilePosition, Tilemap, Tileset};
+use engine::asset::{TileId, TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
 use engine::tile::{Tile, TileUuid};
@@ -242,20 +242,20 @@ impl GameState for PlayState {
         self.players
             .iter()
             .filter_map(|player| {
-                player.get_current_move_direction().map(|move_direction| {
-                    let speed = match move_direction {
-                        MoveDirection::Up => [0.0, -1.0],
-                        MoveDirection::Down => [0.0, 1.0],
-                        MoveDirection::Left => [-1.0, 0.0],
-                        MoveDirection::Right => [1.0, 0.0],
-                    };
+                let move_direction = player.get_current_move_direction()?;
+                let tile_id = player.get_tile_id_for_move_direction(move_direction)?;
+                let speed = match move_direction {
+                    MoveDirection::Up => [0.0, -1.0],
+                    MoveDirection::Down => [0.0, 1.0],
+                    MoveDirection::Left => [-1.0, 0.0],
+                    MoveDirection::Right => [1.0, 0.0],
+                };
 
-                    (player.tile_uuid, speed)
-                })
+                Some((player.tile_uuid, speed, tile_id))
             })
-            .collect::<Vec<(TileUuid, [f64; 2])>>()
+            .collect::<Vec<(TileUuid, [f64; 2], TileId)>>()
             .into_iter()
-            .for_each(|(id, speed)| {
+            .for_each(|(id, speed, tile_id)| {
                 if let Some(player_tile) = self.map.tiles[1].get_mut_tile_by_id(id) {
                     let [vx, vy] = speed;
                     let (x, y) = player_tile.sprite_holder.sprite.get_position();
@@ -263,6 +263,7 @@ impl GameState for PlayState {
                         .sprite_holder
                         .sprite
                         .set_position(x + vx * dt * 32.0 * 2.0, y + vy * dt * 32.0 * 2.0);
+                    player_tile.sprite_holder.update_tile_id(tile_id);
                 }
             });
 

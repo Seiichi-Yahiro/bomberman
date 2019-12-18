@@ -29,16 +29,35 @@ impl SpriteHolder {
 
     pub fn update_tile_id(&mut self, tile_id: u32) {
         if let Some(texture_data) = self.tileset.texture_holder.get_texture_data(tile_id) {
-            self.sprite.update_texture_data(texture_data);
-            self.animation = Self::get_animation(&self.tileset, tile_id);
+            if self.default_tile_id != tile_id {
+                self.default_tile_id = tile_id;
+                self.sprite.update_texture_data(texture_data);
+                self.update_animation(tile_id);
+            }
         }
     }
 
+    fn update_animation(&mut self, tile_id: u32) {
+        let mut new_animation = Self::get_animation(&self.tileset, tile_id);
+
+        if let Some(new_animation) = new_animation.as_mut() {
+            let was_playing = self
+                .animation
+                .as_ref()
+                .map(|prev_animation| !prev_animation.is_stopped() && !prev_animation.is_paused())
+                .unwrap_or(false);
+
+            if was_playing {
+                new_animation.play();
+            }
+        }
+
+        self.animation = new_animation;
+    }
+
     fn get_animation(tileset: &Rc<Tileset>, tile_id: u32) -> Option<Animation> {
-        tileset
-            .animation_frames_holder
-            .get(&tile_id)
-            .map(|frames| Animation::new(Rc::clone(frames)))
+        let frames = tileset.animation_frames_holder.get(&tile_id)?;
+        Some(Animation::new(Rc::clone(frames)))
     }
 }
 

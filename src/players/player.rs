@@ -50,6 +50,18 @@ impl Player {
     pub fn get_current_move_direction(&self) -> Option<MoveDirection> {
         self.move_direction_stack.last().cloned()
     }
+
+    pub fn get_tile_id_for_move_direction(&self, move_direction: MoveDirection) -> Option<TileId> {
+        let player_face_direction = match move_direction {
+            MoveDirection::Up => PlayerFaceDirection::Up,
+            MoveDirection::Down => PlayerFaceDirection::Down,
+            MoveDirection::Left => PlayerFaceDirection::Left,
+            MoveDirection::Right => PlayerFaceDirection::Right,
+        };
+        self.face_directions_to_tile_ids
+            .get(&player_face_direction)
+            .copied()
+    }
 }
 
 impl EventHandler for Player {
