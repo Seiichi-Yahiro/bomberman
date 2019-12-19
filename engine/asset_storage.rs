@@ -1,10 +1,11 @@
+use crate::errors::TileEngineError;
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
 pub trait Asset: Any {
-    fn load_from_file(path: &Path) -> Self
+    fn load_from_file(path: &Path) -> Result<Self, TileEngineError>
     where
         Self: Sized;
 }

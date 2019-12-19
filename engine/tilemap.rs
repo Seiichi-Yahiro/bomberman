@@ -1,7 +1,9 @@
 use crate::asset_storage::Asset;
+use crate::errors::TileEngineError;
 use crate::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::flatten_2d;
 use std::collections::HashMap;
+use std::error::Error;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::rc::Rc;
@@ -60,7 +62,7 @@ impl Tilemap {
 }
 
 impl Asset for Tilemap {
-    fn load_from_file(path: &Path) -> Self
+    fn load_from_file(path: &Path) -> Result<Self, TileEngineError>
     where
         Self: Sized,
     {
@@ -71,36 +73,38 @@ impl Asset for Tilemap {
             .map_or(false, |ext| ext == "tmx");
 
         if !path.is_file() || !is_tmx {
-            panic!(format!("{} is not a .tmx file!", path.display()));
+            return Err(TileEngineError::WrongFileType(format!(
+                "{} is not a .tmx file!",
+                path.display()
+            )));
         }
 
-        let tilemap = tiled::parse_file(path).unwrap();
+        let tilemap = tiled::parse_file(path).map_err(|e| TileEngineError::TileMapParseError(e))?;
 
         let tileset = tilemap
             .tilesets
             .iter()
             .map(|tileset| {
-                Tileset::from_tileset(
-                    tileset,
-                    &path.parent().unwrap_or_else(|| {
-                        panic!(format!(
+                path.parent()
+                    .map(|folder| Tileset::from_tileset(tileset, folder))
+                    .ok_or_else(|| {
+                        TileEngineError::TextureDirectoryNotFound(format!(
                             "Cannot find parent directory of {}",
                             path.display()
                         ))
-                    }),
-                )
+                    })
             })
             .fold(Tileset::default(), |mut acc, item| {
                 acc.combine(item);
                 acc
             });
 
-        Tilemap {
+        Ok(Tilemap {
             width: tilemap.width,
             height: tilemap.height,
             tiles: Self::convert_tilemap_to_tiles(&tilemap),
             object_groups: Self::extract_object_groups_from_tilemap(&tilemap),
             tileset: Rc::new(tileset),
-        }
+        })
     }
 }

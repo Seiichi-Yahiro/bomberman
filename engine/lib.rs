@@ -1,6 +1,7 @@
 pub mod animation;
 mod app;
 mod asset_storage;
+mod errors;
 mod game_state_builder;
 pub mod map;
 mod sprite_holder;
