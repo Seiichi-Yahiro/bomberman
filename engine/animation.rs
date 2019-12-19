@@ -1,8 +1,9 @@
+use crate::tileset::TileId;
 use crate::traits::game_loop_event::Updatable;
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::tileset::TileId;
 
+#[derive(Debug)]
 pub struct Frame {
     pub tile_id: u32,
     pub duration: u32,
@@ -71,6 +72,7 @@ impl Animation {
 
     pub fn load_animation_frames_from_tileset(
         tileset: &tiled::Tileset,
+        from_tilemap: bool,
     ) -> HashMap<u32, Rc<Vec<Frame>>> {
         tileset
             .tiles
@@ -82,12 +84,18 @@ impl Animation {
                     .iter()
                     .map(Self::convert_tiled_frames)
                     .map(|mut frame| {
-                        frame.tile_id += tileset.first_gid;
+                        if !from_tilemap {
+                            frame.tile_id += tileset.first_gid;
+                        }
                         frame
                     })
                     .collect();
 
-                let tile_id = tile.id + tileset.first_gid;
+                let tile_id = if !from_tilemap {
+                    tile.id + tileset.first_gid
+                } else {
+                    tile.id
+                };
                 Some((tile_id, Rc::new(frames)))
             })
             .collect()
@@ -141,7 +149,8 @@ mod tests {
         let tileset = tiled::parse_tileset(tileset_str.as_bytes(), gid).unwrap();
         let tileset = Tileset {
             texture_holder: Default::default(),
-            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
+            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset, false),
+            properties: Default::default(),
         };
 
         let mut animation = Animation::new(Rc::clone(&tileset.animation_frames_holder[&(2 + gid)]));

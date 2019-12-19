@@ -17,10 +17,13 @@ pub struct Tileset {
 }
 
 impl Tileset {
-    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path) -> Tileset {
+    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path, from_tilemap: bool) -> Tileset {
         Tileset {
             texture_holder: TextureHolder::from_tileset(&tileset, folder),
-            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
+            animation_frames_holder: Animation::load_animation_frames_from_tileset(
+                &tileset,
+                from_tilemap,
+            ),
             properties: tileset
                 .tiles
                 .iter()
@@ -60,6 +63,7 @@ impl Asset for Tileset {
                     path.display()
                 ))
             }),
+            false,
         )
     }
 }

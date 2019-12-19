@@ -4,8 +4,7 @@ pub fn flatten_2d<T>(v: &Vec<Vec<T>>) -> Vec<(usize, usize, &T)> {
         .flat_map(|(row_index, row)| {
             row.iter()
                 .enumerate()
-                .map(|(column_index, tile_id)| (row_index, column_index, tile_id))
-                .collect::<Vec<(usize, usize, &T)>>()
+                .map(move |(column_index, tile_id)| (row_index, column_index, tile_id))
         })
         .collect()
 }

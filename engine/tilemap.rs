@@ -1,7 +1,7 @@
 use crate::asset_storage::Asset;
 use crate::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::flatten_2d;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::path::Path;
 use std::rc::Rc;
@@ -9,7 +9,6 @@ use std::rc::Rc;
 pub struct Tilemap {
     pub object_groups: HashMap<String, Vec<tiled::Object>>,
     pub tiles: Vec<HashMap<TilePosition, TileId>>,
-    pub tile_ids: Vec<TileId>,
     pub tileset: Rc<Tileset>,
     pub width: u32,
     pub height: u32,
@@ -58,6 +57,14 @@ impl Tilemap {
             })
             .collect()
     }
+
+    pub fn get_used_tile_ids(&self) -> HashSet<TileId> {
+        self.tiles
+            .iter()
+            .flat_map(|layer| layer.values())
+            .copied()
+            .collect()
+    }
 }
 
 impl Asset for Tilemap {
@@ -89,6 +96,7 @@ impl Asset for Tilemap {
                             path.display()
                         ))
                     }),
+                    true,
                 )
             })
             .fold(Tileset::default(), |mut acc, item| {

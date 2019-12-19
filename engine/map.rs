@@ -1,58 +1,75 @@
 use crate::sprite_holder::SpriteHolder;
-use crate::tile::{LayerTilesHolder, Tile};
-use crate::tile_layer::TileLayer;
 use crate::tilemap::Tilemap;
-use crate::tileset::TileId;
+use crate::tileset::{TileId, TilePosition};
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
+use graphics::Transformed;
 use opengl_graphics::GlGraphics;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+type SpriteHolderRc = Rc<RefCell<SpriteHolder>>;
+type SpriteHolders = HashMap<TileId, SpriteHolderRc>;
+type TileLayer = HashMap<TilePosition, SpriteHolderRc>;
+
 pub struct Map {
-    pub tiles: Vec<TileLayer>,
     pub tilemap: Rc<Tilemap>,
-    sprites: HashMap<TileId, SpriteHolder>,
+    tiles: Vec<TileLayer>,
+    sprites: SpriteHolders,
 }
 
 impl Map {
     pub fn from_tilemap(tilemap: Rc<Tilemap>) -> Map {
+        let sprites = Self::create_sprite_holders(&tilemap);
+
         Map {
-            tiles: tilemap
-                .tiles
-                .iter()
-                .enumerate()
-                .map(|(layer_index, layer)| {
-                    let mut tile_layer = TileLayer::new();
-                    let mut map_events_holder = LayerTilesHolder::new();
-
-                    for (&position, &tile_id) in layer.iter() {
-                        if let Some(mut map_event) =
-                            Tile::from_tileset(Rc::clone(&tilemap.tileset), tile_id, layer_index)
-                        {
-                            map_event
-                                .sprite_holder
-                                .sprite
-                                .set_position(position[0] as f64, position[1] as f64);
-                            map_events_holder.insert(map_event);
-                        }
-                    }
-
-                    map_events_holder
-                })
-                .collect(),
+            tiles: Self::create_tiles(&tilemap, &sprites),
+            sprites,
             tilemap,
-            sprites: tilemap.tiles.iter().flat_map(|layer| {
-                layer.
-            }).collect(),
         }
+    }
+
+    pub fn get_tiles(&self) -> &Vec<TileLayer> {
+        &self.tiles
+    }
+
+    fn create_tiles(tilemap: &Tilemap, sprites: &SpriteHolders) -> Vec<TileLayer> {
+        tilemap
+            .tiles
+            .iter()
+            .enumerate()
+            .map(|(layer_index, layer)| {
+                layer
+                    .iter()
+                    .filter_map(|(&position, tile_id)| {
+                        let sprite_holder = sprites.get(tile_id)?;
+                        let entry = (position, Rc::clone(sprite_holder));
+                        Some(entry)
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn create_sprite_holders(tilemap: &Tilemap) -> SpriteHolders {
+        tilemap
+            .get_used_tile_ids()
+            .iter()
+            .filter_map(|&tile_id| {
+                let tileset = Rc::clone(&tilemap.tileset);
+                let sprite_holder = SpriteHolder::from_tileset(tileset, tile_id)?;
+                let entry = (tile_id, Rc::new(RefCell::new(sprite_holder)));
+                Some(entry)
+            })
+            .collect()
     }
 }
 
 impl Updatable for Map {
     fn update(&mut self, dt: f64) {
-        self.tiles.iter_mut().for_each(|layer| {
-            layer.update(dt);
+        self.sprites.values().for_each(|sprite_holder| {
+            sprite_holder.borrow_mut().update(dt);
         });
     }
 }
@@ -60,7 +77,11 @@ impl Updatable for Map {
 impl Drawable for Map {
     fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
         self.tiles.iter().for_each(|layer| {
-            layer.draw(transform, g);
+            layer.iter().for_each(|([x, y], sprite_holder)| {
+                sprite_holder
+                    .borrow()
+                    .draw(transform.trans(*x as f64, *y as f64), g);
+            });
         });
     }
 }

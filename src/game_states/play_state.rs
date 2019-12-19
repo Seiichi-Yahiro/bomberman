@@ -47,10 +47,10 @@ impl PlayState {
                     map: Map::from_tilemap(tilemap),
                     players: vec![player1, player2],
                 };
-                play_state.create_soft_blocks();
+                //play_state.create_soft_blocks();
 
-                play_state.map.tiles[1].insert(player1_tile);
-                play_state.map.tiles[1].insert(player2_tile);
+                //play_state.map.tiles[1].insert(player1_tile);
+                //play_state.map.tiles[1].insert(player2_tile);
 
                 Box::new(play_state)
             })
@@ -136,7 +136,7 @@ impl PlayState {
         controls
     }
 
-    fn create_soft_blocks(&mut self) {
+    /*    fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
             soft_block
                 .properties
@@ -183,7 +183,7 @@ impl PlayState {
                 layer.insert(event);
             }
         });
-    }
+    }*/
 
     fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
         tilemap
@@ -223,33 +223,33 @@ impl GameState for PlayState {
     fn update(&mut self, _state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
         self.map.update(dt);
 
-        self.players
-            .iter()
-            .filter_map(|player| {
-                let move_direction = player.get_current_move_direction()?;
-                let tile_id = player.get_tile_id_for_move_direction(move_direction)?;
-                let speed = match move_direction {
-                    MoveDirection::Up => [0.0, -1.0],
-                    MoveDirection::Down => [0.0, 1.0],
-                    MoveDirection::Left => [-1.0, 0.0],
-                    MoveDirection::Right => [1.0, 0.0],
-                };
+        /*self.players
+        .iter()
+        .filter_map(|player| {
+            let move_direction = player.get_current_move_direction()?;
+            let tile_id = player.get_tile_id_for_move_direction(move_direction)?;
+            let speed = match move_direction {
+                MoveDirection::Up => [0.0, -1.0],
+                MoveDirection::Down => [0.0, 1.0],
+                MoveDirection::Left => [-1.0, 0.0],
+                MoveDirection::Right => [1.0, 0.0],
+            };
 
-                Some((player.tile_uuid, speed, tile_id))
-            })
-            .collect::<Vec<(TileUuid, [f64; 2], TileId)>>()
-            .into_iter()
-            .for_each(|(id, speed, tile_id)| {
-                if let Some(player_tile) = self.map.tiles[1].get_mut_tile_by_id(id) {
-                    let [vx, vy] = speed;
-                    let (x, y) = player_tile.sprite_holder.sprite.get_position();
-                    player_tile
-                        .sprite_holder
-                        .sprite
-                        .set_position(x + vx * dt * 32.0 * 2.0, y + vy * dt * 32.0 * 2.0);
-                    player_tile.sprite_holder.update_tile_id(tile_id);
-                }
-            });
+            Some((player.tile_uuid, speed, tile_id))
+        })
+        .collect::<Vec<(TileUuid, [f64; 2], TileId)>>()
+        .into_iter()
+        .for_each(|(id, speed, tile_id)| {
+            if let Some(player_tile) = self.map.tiles[1].get_mut_tile_by_id(id) {
+                let [vx, vy] = speed;
+                let (x, y) = player_tile.sprite_holder.sprite.get_position();
+                player_tile
+                    .sprite_holder
+                    .sprite
+                    .set_position(x + vx * dt * 32.0 * 2.0, y + vy * dt * 32.0 * 2.0);
+                player_tile.sprite_holder.update_tile_id(tile_id);
+            }
+        });*/
 
         true
     }
