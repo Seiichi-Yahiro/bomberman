@@ -1,3 +1,4 @@
+pub use graphics::math::Matrix2d;
 pub use graphics::Context;
 pub use opengl_graphics::GlGraphics;
 pub use piston::input::Event;
@@ -11,5 +12,5 @@ pub trait Updatable {
 }
 
 pub trait Drawable {
-    fn draw(&self, c: &Context, g: &mut GlGraphics);
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics);
 }

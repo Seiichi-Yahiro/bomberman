@@ -1,7 +1,7 @@
 use crate::sprite_holder::SpriteHolder;
 use crate::tileset::{TilePosition, Tileset};
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use graphics::Context;
+use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -32,8 +32,8 @@ impl Updatable for Tile {
 }
 
 impl Drawable for Tile {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.sprite_holder.draw(c, g);
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.sprite_holder.draw(transform, g);
     }
 }
 
@@ -100,9 +100,9 @@ impl Updatable for LayerTilesHolder {
 }
 
 impl Drawable for LayerTilesHolder {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
         self.tiles.iter().for_each(|tile| {
-            tile.1.sprite_holder.draw(c, g);
+            tile.1.sprite_holder.draw(transform, g);
         });
     }
 }

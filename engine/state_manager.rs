@@ -5,7 +5,7 @@ use crate::traits::game_loop_event::*;
 pub trait GameState {
     fn handle_event(&mut self, state_context: &mut StateContext, event: &Event) -> bool;
     fn update(&mut self, state_context: &mut StateContext, dt: f64) -> bool;
-    fn draw(&self, c: &Context, g: &mut GlGraphics);
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics);
 }
 
 pub struct StateContext<'a, 's> {
@@ -104,7 +104,7 @@ impl StateManager {
 }
 
 impl Drawable for StateManager {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.stack.iter().for_each(|state| state.draw(c, g))
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.stack.iter().for_each(|state| state.draw(transform, g))
     }
 }

@@ -1,6 +1,7 @@
 use crate::traits::game_loop_event::Updatable;
 use std::collections::HashMap;
 use std::rc::Rc;
+use crate::tileset::TileId;
 
 pub struct Frame {
     pub tile_id: u32,
@@ -26,7 +27,7 @@ impl Animation {
         }
     }
 
-    pub fn get_current_tile_id(&self) -> u32 {
+    pub fn get_current_tile_id(&self) -> TileId {
         self.frames[self.current_frame].tile_id
     }
 

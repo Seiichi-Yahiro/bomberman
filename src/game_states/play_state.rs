@@ -254,7 +254,7 @@ impl GameState for PlayState {
         true
     }
 
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.map.draw(c, g);
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.map.draw(transform, g);
     }
 }

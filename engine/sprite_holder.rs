@@ -2,7 +2,7 @@ use crate::animation::Animation;
 use crate::texture_holder::SpriteTextureDataExt;
 use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use graphics::Context;
+use graphics::math::Matrix2d;
 use opengl_graphics::{GlGraphics, Texture};
 use sprite::Sprite as PistonSprite;
 use std::rc::Rc;
@@ -83,7 +83,7 @@ impl Updatable for SpriteHolder {
 }
 
 impl Drawable for SpriteHolder {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
-        self.sprite.draw(c.transform, g);
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.sprite.draw(transform, g);
     }
 }

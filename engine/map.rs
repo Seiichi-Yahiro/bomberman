@@ -1,7 +1,7 @@
 use crate::tile::{LayerTilesHolder, Tile};
 use crate::tilemap::Tilemap;
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use graphics::Context;
+use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
 use std::rc::Rc;
 
@@ -49,9 +49,9 @@ impl Updatable for Map {
 }
 
 impl Drawable for Map {
-    fn draw(&self, c: &Context, g: &mut GlGraphics) {
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
         self.tiles.iter().for_each(|layer| {
-            layer.draw(c, g);
+            layer.draw(transform, g);
         });
     }
 }
