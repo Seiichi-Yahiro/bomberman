@@ -9,6 +9,7 @@ use std::rc::Rc;
 pub struct Tilemap {
     pub object_groups: HashMap<String, Vec<tiled::Object>>,
     pub tiles: Vec<HashMap<TilePosition, TileId>>,
+    pub tile_ids: Vec<TileId>,
     pub tileset: Rc<Tileset>,
     pub width: u32,
     pub height: u32,

@@ -1,6 +1,7 @@
 use crate::command::{Category, Command};
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
+use graphics::Transformed;
 use opengl_graphics::GlGraphics;
 
 pub type Link = Box<dyn SceneNode>;
@@ -15,6 +16,7 @@ pub trait SceneNode: Updatable + Drawable {
 
 pub struct SceneGraph {
     children: Vec<Link>,
+    transform: Matrix2d,
 }
 
 impl SceneGraph {
@@ -30,7 +32,7 @@ impl SceneGraph {
 
     fn draw_children(&self, transform: Matrix2d, g: &mut GlGraphics) {
         self.children.iter().for_each(|child| {
-            child.draw(transform, g);
+            child.draw(transform.append_transform(self.transform), g);
         });
     }
 }

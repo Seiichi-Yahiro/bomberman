@@ -1,13 +1,18 @@
+use crate::sprite_holder::SpriteHolder;
 use crate::tile::{LayerTilesHolder, Tile};
+use crate::tile_layer::TileLayer;
 use crate::tilemap::Tilemap;
+use crate::tileset::TileId;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Map {
-    pub tiles: Vec<LayerTilesHolder>,
+    pub tiles: Vec<TileLayer>,
     pub tilemap: Rc<Tilemap>,
+    sprites: HashMap<TileId, SpriteHolder>,
 }
 
 impl Map {
@@ -18,6 +23,7 @@ impl Map {
                 .iter()
                 .enumerate()
                 .map(|(layer_index, layer)| {
+                    let mut tile_layer = TileLayer::new();
                     let mut map_events_holder = LayerTilesHolder::new();
 
                     for (&position, &tile_id) in layer.iter() {
@@ -36,6 +42,9 @@ impl Map {
                 })
                 .collect(),
             tilemap,
+            sprites: tilemap.tiles.iter().flat_map(|layer| {
+                layer.
+            }).collect(),
         }
     }
 }

@@ -9,6 +9,7 @@ mod sprite_holder;
 mod state_manager;
 mod texture_holder;
 pub mod tile;
+mod tile_layer;
 mod tilemap;
 mod tileset;
 mod traits;
