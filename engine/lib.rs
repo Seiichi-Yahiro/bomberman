@@ -1,8 +1,10 @@
 pub mod animation;
 mod app;
 mod asset_storage;
+mod command;
 mod game_state_builder;
 pub mod map;
+mod scene;
 mod sprite_holder;
 mod state_manager;
 mod texture_holder;
