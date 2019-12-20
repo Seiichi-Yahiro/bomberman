@@ -27,7 +27,16 @@ impl Tileset {
             properties: tileset
                 .tiles
                 .iter()
-                .map(|tile| (tile.id + tileset.first_gid, tile.properties.clone()))
+                .map(|tile| {
+                    (
+                        if !from_tilemap {
+                            tile.id + tileset.first_gid
+                        } else {
+                            tile.id
+                        },
+                        tile.properties.clone(),
+                    )
+                })
                 .collect(),
         }
     }
