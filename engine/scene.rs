@@ -1,26 +1,31 @@
 use crate::command::{Category, Command};
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use graphics::math::Matrix2d;
+use graphics::math::{identity, Matrix2d};
 use graphics::Transformed;
 use opengl_graphics::GlGraphics;
 
 pub type Link = Box<dyn SceneNode>;
 
 pub trait SceneNode: Updatable + Drawable {
-    /// Commands are applied to categories
-    /// 0 is predefined as no category
-    fn get_category(&self) -> Category;
-
     fn on_command(&self, command: &Command);
 }
 
-pub struct SceneGraph {
+pub struct SceneTree {
+    content: Link,
     children: Vec<Link>,
     transform: Matrix2d,
 }
 
-impl SceneGraph {
-    fn attach(&mut self, child: Link) {
+impl SceneTree {
+    pub fn new(content: Link) -> SceneTree {
+        SceneTree {
+            content,
+            children: vec![],
+            transform: identity(),
+        }
+    }
+
+    pub fn attach(&mut self, child: Link) {
         self.children.push(child);
     }
 
@@ -37,28 +42,22 @@ impl SceneGraph {
     }
 }
 
-impl Updatable for SceneGraph {
+impl Updatable for SceneTree {
     fn update(&mut self, dt: f64) {
+        self.content.update(dt);
         self.update_children(dt);
     }
 }
 
-impl Drawable for SceneGraph {
+impl Drawable for SceneTree {
     fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.content.draw(transform, g);
         self.draw_children(transform, g);
     }
 }
 
-impl SceneNode for SceneGraph {
-    fn get_category(&self) -> Category {
-        0
-    }
-
+impl SceneNode for SceneTree {
     fn on_command(&self, command: &Command) {
-        if self.get_category() == command.get_category() {
-            command.execute(self);
-        }
-
         self.children.iter().for_each(|child| {
             child.on_command(command);
         });
