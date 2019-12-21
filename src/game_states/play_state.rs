@@ -7,7 +7,7 @@ use crate::players::{
 use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
-use engine::tile::{Tile, TileUuid};
+use engine::tile::Tile;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -17,18 +17,18 @@ const PLAYER_2_TILESET_ID: &str = "player2";
 
 pub struct PlayState {
     map: Map,
-    players: Vec<Player>,
+    //players: Vec<Player>,
 }
 
 impl PlayState {
     pub fn build() -> GameStateBuilder {
         GameStateBuilderBuilder::new()
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
-            .load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
-            .load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
+            //.load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
+            //.load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
             .build(|asset_storage| {
                 let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
-                let player_spawns = Self::get_player_spawns(&tilemap);
+                /*let player_spawns = Self::get_player_spawns(&tilemap);
 
                 let (player1, player1_tile) = Self::create_player(
                     PlayerId::Player1,
@@ -41,13 +41,13 @@ impl PlayState {
                     asset_storage,
                     PLAYER_2_TILESET_ID,
                     player_spawns[&1],
-                );
+                );*/
 
                 let mut play_state = PlayState {
                     map: Map::from_tilemap(tilemap),
-                    players: vec![player1, player2],
+                    //players: vec![player1, player2],
                 };
-                //play_state.create_soft_blocks();
+                play_state.create_soft_blocks();
 
                 //play_state.map.tiles[1].insert(player1_tile);
                 //play_state.map.tiles[1].insert(player2_tile);
@@ -56,7 +56,7 @@ impl PlayState {
             })
     }
 
-    fn create_player(
+    /*fn create_player(
         id: PlayerId,
         asset_storage: &AssetStorage,
         tileset_id: &str,
@@ -134,9 +134,9 @@ impl PlayState {
         }
 
         controls
-    }
+    }*/
 
-    /*    fn create_soft_blocks(&mut self) {
+    fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
             soft_block
                 .properties
@@ -150,7 +150,7 @@ impl PlayState {
                 .unwrap_or(false)
         };
 
-        let soft_blocks: Vec<Tile> = self
+        let soft_blocks: Vec<(usize, Tile)> = self
             .map
             .tilemap
             .object_groups
@@ -165,25 +165,21 @@ impl PlayState {
                     .and_then(|property_value| match property_value {
                         PropertyValue::IntValue(layer_id) => {
                             let tileset = Rc::clone(&self.map.tilemap.tileset);
-                            let mut event =
-                                Tile::from_tileset(tileset, object.gid, layer_id.abs() as usize)?;
-                            event
-                                .sprite_holder
+                            let mut tile = Tile::from_tileset(tileset, object.gid)?;
+                            tile.sprite_holder
                                 .sprite
                                 .set_position(object.x as f64, object.y as f64);
-                            Some(event)
+                            Some((layer_id.abs() as usize, tile))
                         }
                         _ => None,
                     })
             })
             .collect();
 
-        soft_blocks.into_iter().for_each(|event| {
-            if let Some(layer) = self.map.tiles.get_mut(event.layer) {
-                layer.insert(event);
-            }
+        soft_blocks.into_iter().for_each(|(layer, tile)| {
+            self.map.add_entity(layer, tile);
         });
-    }*/
+    }
 
     fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
         tilemap
@@ -213,9 +209,9 @@ impl GameState for PlayState {
             return false;
         }
 
-        self.players
-            .iter_mut()
-            .for_each(|player| player.handle_event(event));
+        /*self.players
+        .iter_mut()
+        .for_each(|player| player.handle_event(event));*/
 
         true
     }

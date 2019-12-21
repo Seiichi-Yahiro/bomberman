@@ -1,13 +1,12 @@
 use engine::asset::{PropertyValue, TileId, Tileset};
 use engine::game_state::{Button, Event, EventHandler, PressEvent, ReleaseEvent};
-use engine::tile::TileUuid;
 use std::collections::HashMap;
 
 pub type PlayerControlsMap = HashMap<Button, PlayerAction>;
 
 pub struct Player {
     pub id: PlayerId,
-    pub tile_uuid: TileUuid,
+    //pub tile_uuid: TileUuid,
     pub face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
     move_direction_stack: Vec<MoveDirection>,
     controls_map: PlayerControlsMap,
@@ -16,13 +15,13 @@ pub struct Player {
 impl Player {
     pub fn new(
         id: PlayerId,
-        tile_uuid: TileUuid,
+        //tile_uuid: TileUuid,
         face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
         controls_map: PlayerControlsMap,
     ) -> Player {
         Player {
             id,
-            tile_uuid,
+            //tile_uuid,
             face_directions_to_tile_ids,
             move_direction_stack: Vec::new(),
             controls_map,

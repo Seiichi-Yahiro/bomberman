@@ -1,3 +1,5 @@
+use crate::command::Command;
+use crate::scene::SceneNode;
 use crate::sprite_holder::SpriteHolder;
 use crate::tileset::{TilePosition, Tileset};
 use crate::traits::game_loop_event::{Drawable, Updatable};
@@ -7,20 +9,14 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
 
-pub type TileUuid = Uuid;
-
 pub struct Tile {
-    pub id: TileUuid,
     pub sprite_holder: SpriteHolder,
-    pub layer: usize,
 }
 
 impl Tile {
-    pub fn from_tileset(tileset: Rc<Tileset>, tile_id: u32, layer: usize) -> Option<Tile> {
+    pub fn from_tileset(tileset: Rc<Tileset>, tile_id: u32) -> Option<Tile> {
         Some(Tile {
-            id: Uuid::new_v4(),
             sprite_holder: SpriteHolder::from_tileset(tileset, tile_id)?,
-            layer,
         })
     }
 }
@@ -37,6 +33,11 @@ impl Drawable for Tile {
     }
 }
 
+impl SceneNode for Tile {
+    fn on_command(&self, command: &Command) {}
+}
+
+/*
 #[derive(Default)]
 pub struct LayerTilesHolder {
     tiles: HashMap<TileUuid, Tile>,
@@ -106,3 +107,4 @@ impl Drawable for LayerTilesHolder {
         });
     }
 }
+*/
