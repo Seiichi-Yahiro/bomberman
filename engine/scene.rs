@@ -6,21 +6,21 @@ use opengl_graphics::GlGraphics;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub type Link = Rc<RefCell<dyn SceneNode>>;
+pub type SceneNodeLink = Rc<RefCell<dyn SceneNode>>;
 
 pub trait SceneNode: Updatable + Drawable {
     fn on_command(&self, command: &Command);
 }
 
 #[derive(Clone)]
-pub struct SceneTree {
-    content: Link,
-    children: Vec<Link>,
+pub struct SceneTree<T: SceneNode> {
+    pub content: Rc<RefCell<T>>,
+    children: Vec<SceneNodeLink>,
     transform: Matrix2d,
 }
 
-impl SceneTree {
-    pub fn new(content: Link) -> SceneTree {
+impl<T: SceneNode> SceneTree<T> {
+    pub fn new(content: Rc<RefCell<T>>) -> SceneTree<T> {
         SceneTree {
             content,
             children: vec![],
@@ -28,7 +28,7 @@ impl SceneTree {
         }
     }
 
-    pub fn attach(&mut self, child: Link) {
+    pub fn attach(&mut self, child: SceneNodeLink) {
         self.children.push(child);
     }
 
@@ -47,21 +47,21 @@ impl SceneTree {
     }
 }
 
-impl Updatable for SceneTree {
+impl<T: SceneNode> Updatable for SceneTree<T> {
     fn update(&mut self, dt: f64) {
         self.content.borrow_mut().update(dt);
         self.update_children(dt);
     }
 }
 
-impl Drawable for SceneTree {
+impl<T: SceneNode> Drawable for SceneTree<T> {
     fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
         self.content.borrow().draw(transform, g);
         self.draw_children(transform, g);
     }
 }
 
-impl SceneNode for SceneTree {
+impl<T: SceneNode> SceneNode for SceneTree<T> {
     fn on_command(&self, command: &Command) {
         self.children.iter().for_each(|child| {
             child.borrow().on_command(command);

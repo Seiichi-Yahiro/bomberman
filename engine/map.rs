@@ -1,10 +1,10 @@
-use crate::scene::SceneTree;
+use crate::scene::{SceneNode, SceneNodeLink, SceneTree};
 use crate::sprite_holder::SpriteHolder;
 use crate::tile::Tile;
 use crate::tilemap::Tilemap;
 use crate::tileset::{TileId, TilePosition};
 use crate::traits::game_loop_event::{Drawable, Updatable};
-use graphics::math::Matrix2d;
+use graphics::math::{Matrix2d, Scalar};
 use graphics::Transformed;
 use itertools::{EitherOrBoth, Itertools};
 use opengl_graphics::GlGraphics;
@@ -16,7 +16,7 @@ use std::rc::Rc;
 type SpriteHolderRc = Rc<RefCell<SpriteHolder>>;
 type SpriteHolders = HashMap<TileId, SpriteHolderRc>;
 type TileLayer = HashMap<TilePosition, SpriteHolderRc>;
-type EntityLayer = HashMap<TilePosition, SceneTree>;
+type EntityLayer = HashMap<TilePosition, SceneNodeLink>;
 
 pub struct Map {
     pub tilemap: Rc<Tilemap>,
@@ -39,15 +39,27 @@ impl Map {
         }
     }
 
-    pub fn get_tiles(&self) -> &Vec<TileLayer> {
+    pub fn tiles(&self) -> &Vec<TileLayer> {
         &self.tiles
     }
 
-    pub fn add_entity(&mut self, layer: usize, tile: Tile) {
-        let (x, y) = tile.sprite_holder.sprite.get_position();
-        let tile = Rc::new(RefCell::new(tile));
-        let scene_tree = SceneTree::new(tile);
-        self.entities[layer].insert([x as u32, y as u32], scene_tree);
+    pub fn add_entity<T: SceneNode + 'static>(
+        &mut self,
+        layer: usize,
+        tile_position: TilePosition,
+        entity: Rc<RefCell<T>>,
+    ) {
+        self.entities[layer].insert(tile_position, entity);
+    }
+
+    pub fn convert_position_to_tile_position(&self, position: (Scalar, Scalar)) -> TilePosition {
+        let (x, y) = position;
+        let tile_width = self.tilemap.width;
+        let tile_height = self.tilemap.height;
+        [
+            (x as u32 / tile_width) * tile_width,
+            (y as u32 / tile_height) * tile_height,
+        ]
     }
 
     fn create_tiles(tilemap: &Tilemap, sprites: &SpriteHolders) -> Vec<TileLayer> {
@@ -91,7 +103,7 @@ impl Map {
 
     fn draw_entity_layer(entity_layer: &EntityLayer, transform: Matrix2d, g: &mut GlGraphics) {
         entity_layer.iter().for_each(|(_, scene_tree)| {
-            scene_tree.draw(transform, g);
+            scene_tree.borrow().draw(transform, g);
         });
     }
 }
@@ -104,7 +116,7 @@ impl Updatable for Map {
 
         self.entities.iter_mut().for_each(|entity_layer| {
             entity_layer.values_mut().for_each(|scene_tree| {
-                scene_tree.update(dt);
+                scene_tree.borrow_mut().update(dt);
             });
         });
     }

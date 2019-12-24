@@ -7,7 +7,9 @@ use crate::players::{
 use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
 use engine::game_state::*;
 use engine::map::Map;
+use engine::scene::SceneTree;
 use engine::tile::Tile;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -177,7 +179,11 @@ impl PlayState {
             .collect();
 
         soft_blocks.into_iter().for_each(|(layer, tile)| {
-            self.map.add_entity(layer, tile);
+            let tile_position = self
+                .map
+                .convert_position_to_tile_position(tile.sprite_holder.sprite.get_position());
+            let tile = Rc::new(RefCell::new(tile));
+            self.map.add_entity(layer, tile_position, Rc::clone(&tile));
         });
     }
 
