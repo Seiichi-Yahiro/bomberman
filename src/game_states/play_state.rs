@@ -19,76 +19,61 @@ const PLAYER_2_TILESET_ID: &str = "player2";
 
 pub struct PlayState {
     map: Map,
-    //players: Vec<Player>,
+    players: Vec<Rc<RefCell<SceneTree<Player>>>>,
 }
 
 impl PlayState {
     pub fn build() -> GameStateBuilder {
         GameStateBuilderBuilder::new()
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
-            //.load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
-            //.load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
+            .load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
+            .load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
             .build(|asset_storage| {
                 let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
-                /*let player_spawns = Self::get_player_spawns(&tilemap);
+                let player_spawns = Self::get_player_spawns(&tilemap);
 
-                let (player1, player1_tile) = Self::create_player(
+                let player1 = Self::create_player(
                     PlayerId::Player1,
                     asset_storage,
                     PLAYER_1_TILESET_ID,
                     player_spawns[&0],
                 );
-                let (player2, player2_tile) = Self::create_player(
+                let player2 = Self::create_player(
                     PlayerId::Player2,
                     asset_storage,
                     PLAYER_2_TILESET_ID,
                     player_spawns[&1],
-                );*/
+                );
 
                 let mut play_state = PlayState {
                     map: Map::from_tilemap(tilemap),
-                    //players: vec![player1, player2],
+                    players: vec![Rc::clone(&player1), Rc::clone(&player2)],
                 };
                 play_state.create_soft_blocks();
-
-                //play_state.map.tiles[1].insert(player1_tile);
-                //play_state.map.tiles[1].insert(player2_tile);
+                play_state.map.add_entity(1, player_spawns[&0], player1);
+                play_state.map.add_entity(1, player_spawns[&1], player2);
 
                 Box::new(play_state)
             })
     }
 
-    /*fn create_player(
+    fn create_player(
         id: PlayerId,
         asset_storage: &AssetStorage,
         tileset_id: &str,
         position: TilePosition,
-    ) -> (Player, Tile) {
+    ) -> Rc<RefCell<SceneTree<Player>>> {
         let tileset = asset_storage.get_asset::<Tileset>(tileset_id);
-        let face_directions_to_tile_ids = Player::map_face_directions_to_tile_ids(&tileset);
 
-        let mut player_tile = Tile::from_tileset(
-            tileset,
-            face_directions_to_tile_ids[&PlayerFaceDirection::Down],
-            1,
-        )
-        .unwrap();
+        let mut player = Player::new(id, tileset, Self::create_player_controls(id));
 
         let [x, y] = position;
-        player_tile
-            .sprite_holder
-            .sprite
-            .set_position(x as f64, y as f64);
-        player_tile.sprite_holder.animation.as_mut().unwrap().play();
+        player.sprite_holder.sprite.set_position(x as f64, y as f64);
+        player.sprite_holder.animation.as_mut().unwrap().play();
 
-        let player = Player::new(
-            id,
-            player_tile.id,
-            face_directions_to_tile_ids,
-            Self::create_player_controls(id),
-        );
-
-        (player, player_tile)
+        let player = Rc::new(RefCell::new(player));
+        let player_scene_tree = SceneTree::new(player);
+        Rc::new(RefCell::new(player_scene_tree))
     }
 
     fn create_player_controls(player_id: PlayerId) -> PlayerControlsMap {
@@ -136,7 +121,7 @@ impl PlayState {
         }
 
         controls
-    }*/
+    }
 
     fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {

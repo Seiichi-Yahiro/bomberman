@@ -1,7 +1,7 @@
 pub mod animation;
 mod app;
 mod asset_storage;
-mod command;
+pub mod command;
 mod game_state_builder;
 pub mod map;
 pub mod scene;
@@ -30,6 +30,10 @@ pub mod game_state {
 
 pub mod texture {
     pub use super::texture_holder::*;
+}
+
+pub mod sprite {
+    pub use super::sprite_holder::*;
 }
 
 pub mod asset {

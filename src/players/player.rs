@@ -1,28 +1,37 @@
 use engine::asset::{PropertyValue, TileId, Tileset};
-use engine::game_state::{Button, Event, EventHandler, PressEvent, ReleaseEvent};
+use engine::command::Command;
+use engine::game_state::{
+    Button, Drawable, Event, EventHandler, GlGraphics, Matrix2d, PressEvent, ReleaseEvent,
+    Updatable,
+};
+use engine::scene::SceneNode;
+use engine::sprite::SpriteHolder;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub type PlayerControlsMap = HashMap<Button, PlayerAction>;
 
 pub struct Player {
     pub id: PlayerId,
-    //pub tile_uuid: TileUuid,
     pub face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
+    pub sprite_holder: SpriteHolder,
     move_direction_stack: Vec<MoveDirection>,
     controls_map: PlayerControlsMap,
 }
 
 impl Player {
-    pub fn new(
-        id: PlayerId,
-        //tile_uuid: TileUuid,
-        face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
-        controls_map: PlayerControlsMap,
-    ) -> Player {
+    pub fn new(id: PlayerId, tileset: Rc<Tileset>, controls_map: PlayerControlsMap) -> Player {
+        let face_directions_to_tile_ids = Player::map_face_directions_to_tile_ids(&tileset);
+        let sprite_holder = SpriteHolder::from_tileset(
+            tileset,
+            face_directions_to_tile_ids[&PlayerFaceDirection::Down],
+        )
+        .unwrap();
+
         Player {
             id,
-            //tile_uuid,
             face_directions_to_tile_ids,
+            sprite_holder,
             move_direction_stack: Vec::new(),
             controls_map,
         }
@@ -98,6 +107,22 @@ impl EventHandler for Player {
             },
         }
     }
+}
+
+impl Updatable for Player {
+    fn update(&mut self, dt: f64) {
+        self.sprite_holder.update(dt);
+    }
+}
+
+impl Drawable for Player {
+    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+        self.sprite_holder.draw(transform, g);
+    }
+}
+
+impl SceneNode for Player {
+    fn on_command(&self, command: &Command) {}
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
