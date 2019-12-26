@@ -1,12 +1,11 @@
 use crate::app::AppData;
-use crate::asset_storage::AssetStorage;
 use crate::game_state_builder::GameStateBuilder;
 use crate::traits::game_loop_event::*;
 
 pub trait GameState {
     fn handle_event(&mut self, state_context: &mut StateContext, event: &Event) -> bool;
     fn update(&mut self, state_context: &mut StateContext, dt: f64) -> bool;
-    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics);
+    fn draw(&self, data: &AppData, transform: Matrix2d, g: &mut GlGraphics);
 }
 
 pub struct StateContext<'a, 's> {
@@ -102,9 +101,9 @@ impl StateManager {
 }
 
 impl Drawable for StateManager {
-    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
+    fn draw(&self, data: &AppData, transform: Matrix2d, g: &mut GlGraphics) {
         self.stack
             .iter()
-            .for_each(|state| state.draw(asset_storage, transform, g))
+            .for_each(|state| state.draw(data, transform, g))
     }
 }

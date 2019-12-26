@@ -1,3 +1,4 @@
+use crate::animation::Animation;
 use crate::tileset::TileId;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -38,3 +39,6 @@ pub enum TilesetId<'s> {
     Tilemap,
     Tileset(&'s str),
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Animatable(pub Option<Animation>);

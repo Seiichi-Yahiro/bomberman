@@ -1,24 +1,26 @@
+use crate::state_manager::StateContext;
 use crate::tileset::TileId;
 use crate::traits::game_loop_event::Updatable;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Frame {
     pub tile_id: u32,
     pub duration: u32,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Animation {
     is_stopped: bool,
     is_paused: bool,
     current_frame: usize,
     frame_time: f64,
-    frames: Rc<Vec<Frame>>,
+    frames: Arc<Vec<Frame>>,
 }
 
 impl Animation {
-    pub fn new(frames: Rc<Vec<Frame>>) -> Animation {
+    pub fn new(frames: Arc<Vec<Frame>>) -> Animation {
         Animation {
             is_stopped: true,
             is_paused: false,
@@ -56,24 +58,10 @@ impl Animation {
         self.is_stopped
     }
 
-    pub fn update(&mut self, dt: f64) {
-        if self.is_paused || self.is_stopped {
-            return;
-        }
-
-        self.frame_time += dt * 1000.0;
-        let frame_duration = self.frames[self.current_frame].duration as f64;
-
-        if self.frame_time >= frame_duration {
-            self.frame_time -= frame_duration;
-            self.current_frame = (self.current_frame + 1) % self.frames.len();
-        }
-    }
-
     pub fn load_animation_frames_from_tileset(
         tileset: &tiled::Tileset,
         from_tilemap: bool,
-    ) -> HashMap<u32, Rc<Vec<Frame>>> {
+    ) -> HashMap<u32, Arc<Vec<Frame>>> {
         tileset
             .tiles
             .iter()
@@ -96,7 +84,7 @@ impl Animation {
                 } else {
                     tile.id
                 };
-                Some((tile_id, Rc::new(frames)))
+                Some((tile_id, Arc::new(frames)))
             })
             .collect()
     }
@@ -107,8 +95,18 @@ impl Animation {
 }
 
 impl Updatable for Animation {
-    fn update(&mut self, dt: f64) {
-        self.update(dt);
+    fn update(&mut self, _state_context: &mut StateContext, dt: f64) {
+        if self.is_paused || self.is_stopped {
+            return;
+        }
+
+        self.frame_time += dt * 1000.0;
+        let frame_duration = self.frames[self.current_frame].duration as f64;
+
+        if self.frame_time >= frame_duration {
+            self.frame_time -= frame_duration;
+            self.current_frame = (self.current_frame + 1) % self.frames.len();
+        }
     }
 }
 
@@ -116,7 +114,6 @@ impl Updatable for Animation {
 mod tests {
     use super::*;
     use crate::tileset::Tileset;
-    use std::rc::Rc;
 
     #[test]
     fn test_animation_update() {
@@ -154,7 +151,8 @@ mod tests {
             properties: Default::default(),
         };
 
-        let mut animation = Animation::new(Rc::clone(&tileset.animation_frames_holder[&(2 + gid)]));
+        let mut animation =
+            Animation::new(Arc::clone(&tileset.animation_frames_holder[&(2 + gid)]));
 
         let mut result = Vec::new();
 

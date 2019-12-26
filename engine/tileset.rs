@@ -4,7 +4,7 @@ use crate::texture_holder::TextureHolder;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub type TilePosition = [u32; 2];
 pub type TileId = u32;
@@ -12,7 +12,7 @@ pub type TileId = u32;
 #[derive(Default)]
 pub struct Tileset {
     pub texture_holder: TextureHolder,
-    pub animation_frames_holder: HashMap<TileId, Rc<Vec<Frame>>>,
+    pub animation_frames_holder: HashMap<TileId, Arc<Vec<Frame>>>,
     pub properties: HashMap<TileId, tiled::Properties>,
 }
 

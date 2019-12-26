@@ -23,6 +23,7 @@ pub mod prelude {
 }
 
 pub mod game_state {
+    pub use super::app::AppData;
     pub use super::asset_storage::AssetStorage;
     pub use super::game_state_builder::*;
     pub use super::state_manager::*;

@@ -4,16 +4,14 @@ use crate::arenas::object_groups::{
 use crate::players::{
     MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
 };
-use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
+use engine::asset::{Object, PropertyValue, TilePosition, Tilemap, Tileset};
 use engine::components::{
     CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
 };
 use engine::game_state::*;
 use engine::legion::prelude::*;
 use engine::map::Map;
-use engine::texture::SpriteTextureDataExt;
 use itertools::Itertools;
-use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -56,7 +54,7 @@ impl PlayState {
                     &mut world,
                 );
 
-                let mut map = Map::new(Rc::clone(&tilemap), world);
+                let map = Map::new(Rc::clone(&tilemap), world);
                 map.create_tilemap_entities();
 
                 let mut play_state = PlayState {
@@ -215,8 +213,8 @@ impl GameState for PlayState {
         true
     }
 
-    fn update(&mut self, _state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
-        //self.map.update(dt);
+    fn update(&mut self, state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
+        self.map.update(state_context, dt);
 
         /*self.players
         .iter()
@@ -249,7 +247,7 @@ impl GameState for PlayState {
         true
     }
 
-    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
-        self.map.draw(asset_storage, transform, g);
+    fn draw(&self, data: &AppData, transform: Matrix2d, g: &mut GlGraphics) {
+        self.map.draw(data, transform, g);
     }
 }

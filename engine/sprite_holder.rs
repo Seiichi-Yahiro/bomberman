@@ -1,3 +1,4 @@
+/*
 use crate::animation::Animation;
 use crate::asset_storage::AssetStorage;
 use crate::texture_holder::SpriteTextureDataExt;
@@ -88,3 +89,4 @@ impl Drawable for SpriteHolder {
         self.sprite.draw(transform, g);
     }
 }
+*/

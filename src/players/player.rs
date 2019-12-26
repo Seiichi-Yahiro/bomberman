@@ -1,15 +1,14 @@
+use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
 use engine::components::{
-    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+    Animatable, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
 };
 use engine::game_state::{
     Button, Drawable, Event, EventHandler, GlGraphics, Matrix2d, PressEvent, ReleaseEvent,
     Updatable,
 };
 use engine::legion::{entity::Entity, world::World};
-use engine::sprite::SpriteHolder;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 pub type PlayerControlsMap = HashMap<Button, PlayerAction>;
 
@@ -39,6 +38,13 @@ impl Player {
                     DefaultTileId(tile_id),
                     CurrentTileId(tile_id),
                     TilesetId::Tileset(id.to_str()),
+                    Animatable(tileset.animation_frames_holder.get(&tile_id).cloned().map(
+                        |frames| {
+                            let mut animation = Animation::new(frames);
+                            animation.play();
+                            animation
+                        },
+                    )),
                 )],
             )
             .first()
