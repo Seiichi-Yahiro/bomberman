@@ -1,8 +1,9 @@
+use crate::app::AppData;
 use crate::asset_storage::{Asset, AssetStorage};
 use crate::state_manager::GameState;
 
 pub struct GameStateBuilder {
-    pub build: Box<dyn FnOnce(&mut AssetStorage) -> Box<dyn GameState>>,
+    pub build: Box<dyn FnOnce(&mut AppData) -> Box<dyn GameState>>,
 }
 
 #[derive(Default)]
@@ -33,14 +34,14 @@ impl GameStateBuilderBuilder {
 
     pub fn build(
         self,
-        f: impl FnOnce(&AssetStorage) -> Box<dyn GameState> + 'static,
+        f: impl FnOnce(&AppData) -> Box<dyn GameState> + 'static,
     ) -> GameStateBuilder {
-        let builder = move |asset_storage: &mut AssetStorage| {
+        let builder = move |data: &mut AppData| {
             self.asset_loaders.into_iter().for_each(|load| {
-                load(asset_storage);
+                load(&mut data.asset_storage);
             });
 
-            f(asset_storage)
+            f(data)
         };
 
         GameStateBuilder {

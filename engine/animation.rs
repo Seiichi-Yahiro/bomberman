@@ -116,6 +116,7 @@ impl Updatable for Animation {
 mod tests {
     use super::*;
     use crate::tileset::Tileset;
+    use std::rc::Rc;
 
     #[test]
     fn test_animation_update() {

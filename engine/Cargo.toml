@@ -17,3 +17,4 @@ image = "0.22.3"
 tiled = "0.7.4"
 uuid = { version = "0.8.1", features = ["v4"] }
 itertools = "0.8.2"
+legion = "0.2.1"

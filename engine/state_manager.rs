@@ -1,4 +1,4 @@
-use crate::asset_storage::AssetStorage;
+use crate::app::AppData;
 use crate::game_state_builder::GameStateBuilder;
 use crate::traits::game_loop_event::*;
 
@@ -9,7 +9,7 @@ pub trait GameState {
 }
 
 pub struct StateContext<'a, 's> {
-    pub asset_storage: &'a AssetStorage,
+    pub data: &'a AppData,
     pub request_state_transition: &'s mut dyn FnMut(StateTransition),
 }
 
@@ -25,12 +25,9 @@ pub struct StateManager {
 }
 
 impl StateManager {
-    pub fn new(
-        game_state_builder: GameStateBuilder,
-        asset_storage: &mut AssetStorage,
-    ) -> StateManager {
+    pub fn new(game_state_builder: GameStateBuilder, data: &mut AppData) -> StateManager {
         StateManager {
-            stack: vec![(game_state_builder.build)(asset_storage)],
+            stack: vec![(game_state_builder.build)(data)],
         }
     }
 
@@ -41,32 +38,32 @@ impl StateManager {
     fn apply_pending_transitions(
         &mut self,
         mut pending_transitions: Vec<StateTransition>,
-        asset_storage: &mut AssetStorage,
+        data: &mut AppData,
     ) {
         pending_transitions.reverse();
 
         while let Some(transition) = pending_transitions.pop() {
             match transition {
                 StateTransition::Push(builder) => {
-                    self.stack.push((builder.build)(asset_storage));
+                    self.stack.push((builder.build)(data));
                 }
                 StateTransition::Pop => {
                     self.stack.pop();
                 }
                 StateTransition::Switch(builder) => {
                     self.stack.pop();
-                    self.stack.push((builder.build)(asset_storage));
+                    self.stack.push((builder.build)(data));
                 }
                 StateTransition::Clear => self.stack.clear(),
             }
         }
     }
 
-    pub fn handle_event(&mut self, asset_storage: &mut AssetStorage, event: &Event) {
+    pub fn handle_event(&mut self, data: &mut AppData, event: &Event) {
         let mut pending_transitions: Vec<StateTransition> = vec![];
 
         let mut state_context = StateContext {
-            asset_storage,
+            data,
             request_state_transition: &mut |state_transition| {
                 pending_transitions.push(state_transition)
             },
@@ -79,14 +76,14 @@ impl StateManager {
             }
         }
 
-        self.apply_pending_transitions(pending_transitions, asset_storage);
+        self.apply_pending_transitions(pending_transitions, data);
     }
 
-    pub fn update(&mut self, asset_storage: &mut AssetStorage, dt: f64) {
+    pub fn update(&mut self, data: &mut AppData, dt: f64) {
         let mut pending_transitions: Vec<StateTransition> = vec![];
 
         let mut state_context = StateContext {
-            asset_storage,
+            data,
             request_state_transition: &mut |state_transition| {
                 pending_transitions.push(state_transition)
             },
@@ -99,7 +96,7 @@ impl StateManager {
             }
         }
 
-        self.apply_pending_transitions(pending_transitions, asset_storage);
+        self.apply_pending_transitions(pending_transitions, data);
     }
 }
 

@@ -2,6 +2,7 @@ pub mod animation;
 mod app;
 mod asset_storage;
 pub mod command;
+pub mod components;
 mod game_state_builder;
 pub mod map;
 pub mod scene;
@@ -13,6 +14,8 @@ mod tilemap;
 mod tileset;
 mod traits;
 mod utils;
+
+pub use legion;
 
 pub mod prelude {
     pub use super::app::App;

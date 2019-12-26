@@ -122,7 +122,7 @@ impl Drawable for Player {
 }
 
 impl SceneNode for Player {
-    fn on_command(&self, command: &Command) {}
+    fn on_command(&self, _command: &Command) {}
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

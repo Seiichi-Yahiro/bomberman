@@ -5,10 +5,14 @@ use crate::players::{
     MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
 };
 use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
+use engine::components::{CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition};
 use engine::game_state::*;
+use engine::legion::prelude::*;
 use engine::map::Map;
 use engine::scene::SceneTree;
+use engine::texture::SpriteTextureDataExt;
 use engine::tile::Tile;
+use itertools::Itertools;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -19,7 +23,8 @@ const PLAYER_2_TILESET_ID: &str = "player2";
 
 pub struct PlayState {
     map: Map,
-    players: Vec<Rc<RefCell<SceneTree<Player>>>>,
+    soft_block_entities: Vec<Entity>,
+    //players: Vec<Rc<RefCell<SceneTree<Player>>>>
 }
 
 impl PlayState {
@@ -28,36 +33,42 @@ impl PlayState {
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
             .load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
             .load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
-            .build(|asset_storage| {
-                let tilemap = asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
-                let player_spawns = Self::get_player_spawns(&tilemap);
+            .build(|data| {
+                let tilemap = data.asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
+                let mut world = data.universe.create_world();
+                let map = Map::new(Rc::clone(&tilemap), world);
+                map.create_tilemap_entities();
+
+                /*let player_spawns = Self::get_player_spawns(&tilemap);
 
                 let player1 = Self::create_player(
                     PlayerId::Player1,
-                    asset_storage,
+                    &data.asset_storage,
                     PLAYER_1_TILESET_ID,
                     player_spawns[&0],
                 );
                 let player2 = Self::create_player(
                     PlayerId::Player2,
-                    asset_storage,
+                    &data.asset_storage,
                     PLAYER_2_TILESET_ID,
                     player_spawns[&1],
-                );
+                );*/
 
                 let mut play_state = PlayState {
-                    map: Map::from_tilemap(tilemap),
-                    players: vec![Rc::clone(&player1), Rc::clone(&player2)],
+                    map, //players: vec![Rc::clone(&player1), Rc::clone(&player2)],
+                    soft_block_entities: vec![],
                 };
                 play_state.create_soft_blocks();
-                play_state.map.add_entity(1, player_spawns[&0], player1);
-                play_state.map.add_entity(1, player_spawns[&1], player2);
+
+                //play_state.create_soft_blocks();
+                //play_state.map.add_entity(1, player_spawns[&0], player1);
+                //play_state.map.add_entity(1, player_spawns[&1], player2);
 
                 Box::new(play_state)
             })
     }
 
-    fn create_player(
+    /*fn create_player(
         id: PlayerId,
         asset_storage: &AssetStorage,
         tileset_id: &str,
@@ -121,7 +132,7 @@ impl PlayState {
         }
 
         controls
-    }
+    }*/
 
     fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
@@ -137,7 +148,7 @@ impl PlayState {
                 .unwrap_or(false)
         };
 
-        let soft_blocks: Vec<(usize, Tile)> = self
+        let soft_block_entities = self
             .map
             .tilemap
             .object_groups
@@ -146,30 +157,37 @@ impl PlayState {
             .flat_map(|objects| objects.iter())
             .filter(should_spawn_soft_block)
             .filter_map(|object| {
-                object
+                match object
                     .properties
                     .get(SoftBlockAreasProperties::RenderLayer.as_str())
-                    .and_then(|property_value| match property_value {
-                        PropertyValue::IntValue(layer_id) => {
-                            let tileset = Rc::clone(&self.map.tilemap.tileset);
-                            let mut tile = Tile::from_tileset(tileset, object.gid)?;
-                            tile.sprite_holder
-                                .sprite
-                                .set_position(object.x as f64, object.y as f64);
-                            Some((layer_id.abs() as usize, tile))
-                        }
-                        _ => None,
-                    })
-            })
-            .collect();
+                {
+                    Some(PropertyValue::IntValue(layer_id)) => {
+                        let components = (
+                            MapPosition::new(object.x as u32, object.y as u32),
+                            ScreenPosition::new(object.x as f64, object.y as f64),
+                            DefaultTileId(object.gid),
+                            CurrentTileId(object.gid),
+                        );
 
-        soft_blocks.into_iter().for_each(|(layer, tile)| {
-            let tile_position = self
-                .map
-                .convert_position_to_tile_position(tile.sprite_holder.sprite.get_position());
-            let tile = Rc::new(RefCell::new(tile));
-            self.map.add_entity(layer, tile_position, Rc::clone(&tile));
-        });
+                        let tags = (Layer(layer_id.abs() as usize),);
+
+                        let entities = self
+                            .map
+                            .world
+                            .borrow_mut()
+                            .insert(tags, vec![components])
+                            .iter()
+                            .map(|entity| entity.clone())
+                            .collect_vec();
+                        Some(entities)
+                    }
+                    _ => None,
+                }
+            })
+            .flatten()
+            .collect_vec();
+
+        self.soft_block_entities = soft_block_entities;
     }
 
     fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
@@ -208,7 +226,7 @@ impl GameState for PlayState {
     }
 
     fn update(&mut self, _state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
-        self.map.update(dt);
+        //self.map.update(dt);
 
         /*self.players
         .iter()

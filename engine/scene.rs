@@ -1,4 +1,4 @@
-use crate::command::{Category, Command};
+use crate::command::Command;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::{identity, Matrix2d};
 use graphics::Transformed;

@@ -1,9 +1,8 @@
 use crate::animation::Animation;
 use crate::texture_holder::SpriteTextureDataExt;
-use crate::tileset::{TilePosition, Tileset};
+use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
-use graphics::ImageSize;
 use opengl_graphics::{GlGraphics, Texture};
 use sprite::Sprite as PistonSprite;
 use std::rc::Rc;

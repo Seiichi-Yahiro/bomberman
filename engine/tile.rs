@@ -1,13 +1,11 @@
 use crate::command::Command;
 use crate::scene::SceneNode;
 use crate::sprite_holder::SpriteHolder;
-use crate::tileset::{TilePosition, Tileset};
+use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
 use opengl_graphics::GlGraphics;
-use std::collections::HashMap;
 use std::rc::Rc;
-use uuid::Uuid;
 
 pub struct Tile {
     pub sprite_holder: SpriteHolder,
@@ -34,7 +32,7 @@ impl Drawable for Tile {
 }
 
 impl SceneNode for Tile {
-    fn on_command(&self, command: &Command) {}
+    fn on_command(&self, _command: &Command) {}
 }
 
 /*
