@@ -1,40 +1,49 @@
-use engine::asset::{PropertyValue, TileId, Tileset};
-use engine::command::Command;
+use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
+use engine::components::{
+    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+};
 use engine::game_state::{
     Button, Drawable, Event, EventHandler, GlGraphics, Matrix2d, PressEvent, ReleaseEvent,
     Updatable,
 };
-use engine::scene::SceneNode;
+use engine::legion::{entity::Entity, world::World};
 use engine::sprite::SpriteHolder;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 pub type PlayerControlsMap = HashMap<Button, PlayerAction>;
 
-pub struct Player {
-    pub id: PlayerId,
-    pub face_directions_to_tile_ids: HashMap<PlayerFaceDirection, TileId>,
-    pub sprite_holder: SpriteHolder,
-    move_direction_stack: Vec<MoveDirection>,
-    controls_map: PlayerControlsMap,
-}
+pub struct Player {}
 
 impl Player {
-    pub fn new(id: PlayerId, tileset: Rc<Tileset>, controls_map: PlayerControlsMap) -> Player {
+    pub fn create_player(
+        id: PlayerId,
+        player_spawns: &HashMap<PlayerId, [u32; 2]>,
+        asset_storage: &AssetStorage,
+        world: &mut World,
+    ) -> Entity {
+        let [x, y] = player_spawns.get(&id).unwrap();
+        let tileset = asset_storage.get_asset::<Tileset>(id.to_str());
         let face_directions_to_tile_ids = Player::map_face_directions_to_tile_ids(&tileset);
-        let sprite_holder = SpriteHolder::from_tileset(
-            tileset,
-            face_directions_to_tile_ids[&PlayerFaceDirection::Down],
-        )
-        .unwrap();
+        let tile_id = face_directions_to_tile_ids
+            .get(&PlayerFaceDirection::Down)
+            .unwrap()
+            .clone();
 
-        Player {
-            id,
-            face_directions_to_tile_ids,
-            sprite_holder,
-            move_direction_stack: Vec::new(),
-            controls_map,
-        }
+        world
+            .insert(
+                (Layer(1),),
+                vec![(
+                    MapPosition::new(*x, *y),
+                    ScreenPosition::new(*x as f64, *y as f64),
+                    DefaultTileId(tile_id),
+                    CurrentTileId(tile_id),
+                    TilesetId::Tileset(id.to_str()),
+                )],
+            )
+            .first()
+            .copied()
+            .unwrap()
     }
 
     pub fn map_face_directions_to_tile_ids(
@@ -53,7 +62,7 @@ impl Player {
             )
             .collect()
     }
-
+    /*
     pub fn get_current_move_direction(&self) -> Option<MoveDirection> {
         self.move_direction_stack.last().cloned()
     }
@@ -68,10 +77,10 @@ impl Player {
         self.face_directions_to_tile_ids
             .get(&player_face_direction)
             .copied()
-    }
+    }*/
 }
 
-impl EventHandler for Player {
+/*impl EventHandler for Player {
     fn handle_event(&mut self, event: &Event) {
         let player_action = if let Some(button) = event.press_args() {
             self.controls_map
@@ -107,23 +116,7 @@ impl EventHandler for Player {
             },
         }
     }
-}
-
-impl Updatable for Player {
-    fn update(&mut self, dt: f64) {
-        self.sprite_holder.update(dt);
-    }
-}
-
-impl Drawable for Player {
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
-        self.sprite_holder.draw(transform, g);
-    }
-}
-
-impl SceneNode for Player {
-    fn on_command(&self, _command: &Command) {}
-}
+}*/
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PlayerId {
@@ -131,6 +124,29 @@ pub enum PlayerId {
     Player2,
     Player3,
     Player4,
+}
+
+impl PlayerId {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            PlayerId::Player1 => "player1",
+            PlayerId::Player2 => "player2",
+            PlayerId::Player3 => "player3",
+            PlayerId::Player4 => "player4",
+        }
+    }
+}
+
+impl From<u32> for PlayerId {
+    fn from(num: u32) -> Self {
+        match num {
+            1 => PlayerId::Player1,
+            2 => PlayerId::Player2,
+            3 => PlayerId::Player3,
+            4 => PlayerId::Player4,
+            _ => panic!(format!("Cannot create PlayerId from this number {}", num)),
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

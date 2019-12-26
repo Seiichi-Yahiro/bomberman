@@ -57,7 +57,7 @@ impl App {
             if let Some(render_args) = event.render_args() {
                 gl.draw(render_args.viewport(), |c, g| {
                     graphics::clear([1.0; 4], g);
-                    state_manager.draw(c.transform, g);
+                    state_manager.draw(&self.data.asset_storage, c.transform, g);
                 });
             }
         }

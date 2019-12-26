@@ -1,3 +1,4 @@
+/*
 use crate::scene::SceneNode;
 
 pub type Category = u32;
@@ -20,3 +21,4 @@ impl Command {
         (self.command)(scene_node);
     }
 }
+*/

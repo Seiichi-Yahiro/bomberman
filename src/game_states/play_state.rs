@@ -5,86 +5,70 @@ use crate::players::{
     MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
 };
 use engine::asset::{Object, PropertyValue, TileId, TilePosition, Tilemap, Tileset};
-use engine::components::{CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition};
+use engine::components::{
+    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+};
 use engine::game_state::*;
 use engine::legion::prelude::*;
 use engine::map::Map;
-use engine::scene::SceneTree;
 use engine::texture::SpriteTextureDataExt;
-use engine::tile::Tile;
 use itertools::Itertools;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 const TILEMAP_ID: &str = "ashlands";
-const PLAYER_1_TILESET_ID: &str = "player1";
-const PLAYER_2_TILESET_ID: &str = "player2";
 
 pub struct PlayState {
     map: Map,
     soft_block_entities: Vec<Entity>,
-    //players: Vec<Rc<RefCell<SceneTree<Player>>>>
+    players: Vec<Entity>,
 }
 
 impl PlayState {
     pub fn build() -> GameStateBuilder {
         GameStateBuilderBuilder::new()
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
-            .load_asset::<Tileset>("assets/textures/player/player1.xml", PLAYER_1_TILESET_ID)
-            .load_asset::<Tileset>("assets/textures/player/player2.xml", PLAYER_2_TILESET_ID)
+            .load_asset::<Tileset>(
+                "assets/textures/player/player1.xml",
+                PlayerId::Player1.to_str(),
+            )
+            .load_asset::<Tileset>(
+                "assets/textures/player/player2.xml",
+                PlayerId::Player2.to_str(),
+            )
             .build(|data| {
                 let tilemap = data.asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
                 let mut world = data.universe.create_world();
-                let map = Map::new(Rc::clone(&tilemap), world);
+
+                let player_spawns = Self::get_player_spawns(&tilemap);
+
+                let player1 = Player::create_player(
+                    PlayerId::Player1,
+                    &player_spawns,
+                    &data.asset_storage,
+                    &mut world,
+                );
+                let player2 = Player::create_player(
+                    PlayerId::Player2,
+                    &player_spawns,
+                    &data.asset_storage,
+                    &mut world,
+                );
+
+                let mut map = Map::new(Rc::clone(&tilemap), world);
                 map.create_tilemap_entities();
 
-                /*let player_spawns = Self::get_player_spawns(&tilemap);
-
-                let player1 = Self::create_player(
-                    PlayerId::Player1,
-                    &data.asset_storage,
-                    PLAYER_1_TILESET_ID,
-                    player_spawns[&0],
-                );
-                let player2 = Self::create_player(
-                    PlayerId::Player2,
-                    &data.asset_storage,
-                    PLAYER_2_TILESET_ID,
-                    player_spawns[&1],
-                );*/
-
                 let mut play_state = PlayState {
-                    map, //players: vec![Rc::clone(&player1), Rc::clone(&player2)],
+                    map,
                     soft_block_entities: vec![],
+                    players: vec![player1, player2],
                 };
-                play_state.create_soft_blocks();
 
-                //play_state.create_soft_blocks();
-                //play_state.map.add_entity(1, player_spawns[&0], player1);
-                //play_state.map.add_entity(1, player_spawns[&1], player2);
+                play_state.create_soft_blocks();
 
                 Box::new(play_state)
             })
-    }
-
-    /*fn create_player(
-        id: PlayerId,
-        asset_storage: &AssetStorage,
-        tileset_id: &str,
-        position: TilePosition,
-    ) -> Rc<RefCell<SceneTree<Player>>> {
-        let tileset = asset_storage.get_asset::<Tileset>(tileset_id);
-
-        let mut player = Player::new(id, tileset, Self::create_player_controls(id));
-
-        let [x, y] = position;
-        player.sprite_holder.sprite.set_position(x as f64, y as f64);
-        player.sprite_holder.animation.as_mut().unwrap().play();
-
-        let player = Rc::new(RefCell::new(player));
-        let player_scene_tree = SceneTree::new(player);
-        Rc::new(RefCell::new(player_scene_tree))
     }
 
     fn create_player_controls(player_id: PlayerId) -> PlayerControlsMap {
@@ -132,7 +116,7 @@ impl PlayState {
         }
 
         controls
-    }*/
+    }
 
     fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
@@ -153,11 +137,15 @@ impl PlayState {
             .get(SoftBlockAreasProperties::RenderLayer.as_str())
         {
             Some(PropertyValue::IntValue(layer_id)) => {
+                let x = object.x.abs();
+                let y = object.y.abs();
+
                 let components = (
-                    MapPosition::new(object.x as u32, object.y as u32),
-                    ScreenPosition::new(object.x as f64, object.y as f64),
+                    MapPosition::new(x as u32, y as u32),
+                    ScreenPosition::new(x as f64, y as f64),
                     DefaultTileId(object.gid),
                     CurrentTileId(object.gid),
+                    TilesetId::Tilemap,
                 );
 
                 Some((*layer_id, components))
@@ -191,7 +179,7 @@ impl PlayState {
             .collect_vec();
     }
 
-    fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
+    fn get_player_spawns(tilemap: &Tilemap) -> HashMap<PlayerId, TilePosition> {
         tilemap
             .object_groups
             .get(ArenaObjectGroup::PlayerSpawns.as_str())
@@ -202,9 +190,10 @@ impl PlayState {
                     .properties
                     .get(PlayerSpawnsProperties::PlayerId.as_str())
                     .and_then(|property_value| match property_value {
-                        PropertyValue::IntValue(player_id) => {
-                            Some((*player_id, [object.x as u32, object.y as u32]))
-                        }
+                        PropertyValue::IntValue(player_id) => Some((
+                            PlayerId::from(player_id.abs() as u32),
+                            [object.x.abs() as u32, object.y.abs() as u32],
+                        )),
                         _ => None,
                     })
             })
@@ -260,7 +249,7 @@ impl GameState for PlayState {
         true
     }
 
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
-        self.map.draw(transform, g);
+    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
+        self.map.draw(asset_storage, transform, g);
     }
 }

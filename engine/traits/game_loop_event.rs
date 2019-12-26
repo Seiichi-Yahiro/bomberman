@@ -1,3 +1,4 @@
+use crate::asset_storage::AssetStorage;
 pub use graphics::math::Matrix2d;
 pub use graphics::Context;
 pub use opengl_graphics::GlGraphics;
@@ -12,5 +13,5 @@ pub trait Updatable {
 }
 
 pub trait Drawable {
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics);
+    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics);
 }

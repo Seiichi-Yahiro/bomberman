@@ -32,3 +32,9 @@ pub struct CurrentTileId(pub TileId);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DefaultTileId(pub TileId);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TilesetId<'s> {
+    Tilemap,
+    Tileset(&'s str),
+}

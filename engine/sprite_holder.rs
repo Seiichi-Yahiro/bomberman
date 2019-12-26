@@ -1,4 +1,5 @@
 use crate::animation::Animation;
+use crate::asset_storage::AssetStorage;
 use crate::texture_holder::SpriteTextureDataExt;
 use crate::tileset::Tileset;
 use crate::traits::game_loop_event::{Drawable, Updatable};
@@ -83,7 +84,7 @@ impl Updatable for SpriteHolder {
 }
 
 impl Drawable for SpriteHolder {
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+    fn draw(&self, _asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
         self.sprite.draw(transform, g);
     }
 }

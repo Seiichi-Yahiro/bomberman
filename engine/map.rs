@@ -1,9 +1,11 @@
-use crate::components::{CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition};
-use crate::scene::{SceneNode, SceneNodeLink};
+use crate::asset_storage::AssetStorage;
+use crate::components::{
+    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+};
 use crate::sprite_holder::SpriteHolder;
 use crate::texture_holder::SpriteTextureDataExt;
 use crate::tilemap::Tilemap;
-use crate::tileset::{TileId, TilePosition};
+use crate::tileset::{TileId, TilePosition, Tileset};
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::{Matrix2d, Scalar};
 use graphics::Transformed;
@@ -14,12 +16,6 @@ use sprite::Sprite;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Arc;
-
-type SpriteHolderRc = Rc<RefCell<SpriteHolder>>;
-type SpriteHolders = HashMap<TileId, SpriteHolderRc>;
-type TileLayer = HashMap<TilePosition, SpriteHolderRc>;
-type EntityLayer = HashMap<TilePosition, SceneNodeLink>;
 
 pub struct Map {
     pub tilemap: Rc<Tilemap>,
@@ -48,6 +44,7 @@ impl Map {
                             ScreenPosition::new(x as f64, y as f64),
                             DefaultTileId(tile_id),
                             CurrentTileId(tile_id),
+                            TilesetId::Tilemap,
                         )
                     })
                     .collect_vec();
@@ -64,20 +61,21 @@ impl Updatable for Map {
 }
 
 impl Drawable for Map {
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
+    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
         let mut sprite: Option<Sprite<Texture>> = None;
 
         for layer in 0..self.tilemap.tiles.len() {
             let layer = Layer(layer);
-            let query =
-                <(Read<ScreenPosition>, Read<CurrentTileId>)>::query().filter(tag_value(&layer));
+            let query = <(Read<ScreenPosition>, Read<CurrentTileId>, Read<TilesetId>)>::query()
+                .filter(tag_value(&layer));
 
-            for (pos, tile_id) in query.iter(&mut self.world.borrow_mut()) {
-                let texture_data = self
-                    .tilemap
-                    .tileset
-                    .texture_holder
-                    .get_texture_data(tile_id.0);
+            for (pos, tile_id, tileset_id) in query.iter(&mut self.world.borrow_mut()) {
+                let texture_data = match *tileset_id {
+                    TilesetId::Tilemap => Rc::clone(&self.tilemap.tileset),
+                    TilesetId::Tileset(id) => asset_storage.get_asset::<Tileset>(id),
+                }
+                .texture_holder
+                .get_texture_data(tile_id.0);
 
                 if let Some(texture_data) = texture_data {
                     if let Some(sprite) = &mut sprite {

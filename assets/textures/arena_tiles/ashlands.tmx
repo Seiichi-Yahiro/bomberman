@@ -641,22 +641,22 @@
  <objectgroup id="4" name="player_spawns">
   <object id="112" name="player_spawn_1" gid="323" x="32" y="64" width="32" height="32">
    <properties>
-    <property name="player_id" type="int" value="0"/>
+    <property name="player_id" type="int" value="1"/>
    </properties>
   </object>
   <object id="113" name="player_spawn_2" gid="323" x="416" y="384" width="32" height="32">
    <properties>
-    <property name="player_id" type="int" value="1"/>
+    <property name="player_id" type="int" value="2"/>
    </properties>
   </object>
   <object id="114" name="player_spawn_3" gid="323" x="416" y="64" width="32" height="32">
    <properties>
-    <property name="player_id" type="int" value="2"/>
+    <property name="player_id" type="int" value="3"/>
    </properties>
   </object>
   <object id="115" name="player_spawn_4" gid="323" x="32" y="384" width="32" height="32">
    <properties>
-    <property name="player_id" type="int" value="3"/>
+    <property name="player_id" type="int" value="4"/>
    </properties>
   </object>
  </objectgroup>

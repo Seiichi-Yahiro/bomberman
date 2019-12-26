@@ -9,7 +9,6 @@ pub mod scene;
 mod sprite_holder;
 mod state_manager;
 mod texture_holder;
-pub mod tile;
 mod tilemap;
 mod tileset;
 mod traits;

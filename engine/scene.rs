@@ -1,3 +1,5 @@
+/*
+use crate::asset_storage::AssetStorage;
 use crate::command::Command;
 use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::{identity, Matrix2d};
@@ -55,8 +57,8 @@ impl<T: SceneNode> Updatable for SceneTree<T> {
 }
 
 impl<T: SceneNode> Drawable for SceneTree<T> {
-    fn draw(&self, transform: Matrix2d, g: &mut GlGraphics) {
-        self.content.borrow().draw(transform, g);
+    fn draw(&self, asset_storage: &AssetStorage, transform: Matrix2d, g: &mut GlGraphics) {
+        self.content.borrow().draw(asset_storage, transform, g);
         self.draw_children(transform, g);
     }
 }
@@ -68,3 +70,4 @@ impl<T: SceneNode> SceneNode for SceneTree<T> {
         });
     }
 }
+*/
