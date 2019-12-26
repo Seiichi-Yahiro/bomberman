@@ -148,7 +148,24 @@ impl PlayState {
                 .unwrap_or(false)
         };
 
-        let soft_block_entities = self
+        let create_components_grouped_by_layer = |object: &Object| match object
+            .properties
+            .get(SoftBlockAreasProperties::RenderLayer.as_str())
+        {
+            Some(PropertyValue::IntValue(layer_id)) => {
+                let components = (
+                    MapPosition::new(object.x as u32, object.y as u32),
+                    ScreenPosition::new(object.x as f64, object.y as f64),
+                    DefaultTileId(object.gid),
+                    CurrentTileId(object.gid),
+                );
+
+                Some((*layer_id, components))
+            }
+            _ => None,
+        };
+
+        self.soft_block_entities = self
             .map
             .tilemap
             .object_groups
@@ -156,38 +173,22 @@ impl PlayState {
             .iter()
             .flat_map(|objects| objects.iter())
             .filter(should_spawn_soft_block)
-            .filter_map(|object| {
-                match object
-                    .properties
-                    .get(SoftBlockAreasProperties::RenderLayer.as_str())
-                {
-                    Some(PropertyValue::IntValue(layer_id)) => {
-                        let components = (
-                            MapPosition::new(object.x as u32, object.y as u32),
-                            ScreenPosition::new(object.x as f64, object.y as f64),
-                            DefaultTileId(object.gid),
-                            CurrentTileId(object.gid),
-                        );
+            .filter_map(create_components_grouped_by_layer)
+            .into_group_map()
+            .into_iter()
+            .map(|(layer_id, components)| {
+                let tags = (Layer(layer_id.abs() as usize),);
 
-                        let tags = (Layer(layer_id.abs() as usize),);
-
-                        let entities = self
-                            .map
-                            .world
-                            .borrow_mut()
-                            .insert(tags, vec![components])
-                            .iter()
-                            .map(|entity| entity.clone())
-                            .collect_vec();
-                        Some(entities)
-                    }
-                    _ => None,
-                }
+                self.map
+                    .world
+                    .borrow_mut()
+                    .insert(tags, components)
+                    .iter()
+                    .map(|entity| entity.clone())
+                    .collect_vec()
             })
             .flatten()
             .collect_vec();
-
-        self.soft_block_entities = soft_block_entities;
     }
 
     fn get_player_spawns(tilemap: &Tilemap) -> HashMap<i32, TilePosition> {
