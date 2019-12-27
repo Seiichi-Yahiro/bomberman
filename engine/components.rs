@@ -1,5 +1,6 @@
 use crate::animation::Animation;
 use crate::tileset::TileId;
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MapPosition {
@@ -35,10 +36,13 @@ pub struct CurrentTileId(pub TileId);
 pub struct DefaultTileId(pub TileId);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TilesetId<'s> {
+pub enum TilesetType<'s> {
     Tilemap,
     Tileset(&'s str),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Animatable(pub Option<Animation>);
+#[derive(Clone, Debug)]
+pub enum AnimationType {
+    Shared(Option<Arc<RwLock<Animation>>>),
+    Ownd(Option<Animation>),
+}

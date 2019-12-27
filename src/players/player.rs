@@ -1,7 +1,7 @@
 use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
 use engine::components::{
-    Animatable, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+    AnimationType, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
 };
 use engine::game_state::{
     Button, Drawable, Event, EventHandler, GlGraphics, Matrix2d, PressEvent, ReleaseEvent,
@@ -37,14 +37,18 @@ impl Player {
                     ScreenPosition::new(*x as f64, *y as f64),
                     DefaultTileId(tile_id),
                     CurrentTileId(tile_id),
-                    TilesetId::Tileset(id.to_str()),
-                    Animatable(tileset.animation_frames_holder.get(&tile_id).cloned().map(
-                        |frames| {
-                            let mut animation = Animation::new(frames);
-                            animation.play();
-                            animation
-                        },
-                    )),
+                    TilesetType::Tileset(id.to_str()),
+                    AnimationType::Ownd(
+                        tileset
+                            .animation_frames_holder
+                            .get(&tile_id)
+                            .cloned()
+                            .map(|frames| {
+                                let mut animation = Animation::new(frames);
+                                animation.play();
+                                animation
+                            }),
+                    ),
                 )],
             )
             .first()

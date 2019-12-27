@@ -6,7 +6,7 @@ use crate::players::{
 };
 use engine::asset::{Object, PropertyValue, TilePosition, Tilemap, Tileset};
 use engine::components::{
-    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetId,
+    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
 };
 use engine::game_state::*;
 use engine::legion::prelude::*;
@@ -143,7 +143,7 @@ impl PlayState {
                     ScreenPosition::new(x as f64, y as f64),
                     DefaultTileId(object.gid),
                     CurrentTileId(object.gid),
-                    TilesetId::Tilemap,
+                    TilesetType::Tilemap,
                 );
 
                 Some((*layer_id, components))
