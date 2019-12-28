@@ -58,6 +58,20 @@ impl Animation {
         self.is_stopped
     }
 
+    pub fn update(&mut self, dt: f64) {
+        if self.is_paused || self.is_stopped {
+            return;
+        }
+
+        self.frame_time += dt * 1000.0;
+        let frame_duration = self.frames[self.current_frame].duration as f64;
+
+        if self.frame_time >= frame_duration {
+            self.frame_time -= frame_duration;
+            self.current_frame = (self.current_frame + 1) % self.frames.len();
+        }
+    }
+
     pub fn load_animation_frames_from_tileset(
         tileset: &tiled::Tileset,
         from_tilemap: bool,
@@ -91,22 +105,6 @@ impl Animation {
 
     fn convert_tiled_frames(frame: &tiled::Frame) -> Frame {
         unsafe { std::mem::transmute(frame.clone()) }
-    }
-}
-
-impl Updatable for Animation {
-    fn update(&mut self, _state_context: &mut StateContext, dt: f64) {
-        if self.is_paused || self.is_stopped {
-            return;
-        }
-
-        self.frame_time += dt * 1000.0;
-        let frame_duration = self.frames[self.current_frame].duration as f64;
-
-        if self.frame_time >= frame_duration {
-            self.frame_time -= frame_duration;
-            self.current_frame = (self.current_frame + 1) % self.frames.len();
-        }
     }
 }
 

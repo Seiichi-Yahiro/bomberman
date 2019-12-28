@@ -22,6 +22,7 @@ pub struct PlayState {
     map: Map,
     soft_block_entities: Vec<Entity>,
     players: Vec<Entity>,
+    schedule: Schedule,
 }
 
 impl PlayState {
@@ -37,7 +38,7 @@ impl PlayState {
                 PlayerId::Player2.to_str(),
             )
             .build(|data| {
-                let tilemap = data.asset_storage.get_asset::<Tilemap>(TILEMAP_ID);
+                let tilemap = data.asset_storage.borrow().get_asset::<Tilemap>(TILEMAP_ID);
                 let mut world = data.universe.create_world();
 
                 let player_spawns = Self::get_player_spawns(&tilemap);
@@ -45,23 +46,28 @@ impl PlayState {
                 let player1 = Player::create_player(
                     PlayerId::Player1,
                     &player_spawns,
-                    &data.asset_storage,
+                    &data.asset_storage.borrow(),
                     &mut world,
                 );
                 let player2 = Player::create_player(
                     PlayerId::Player2,
                     &player_spawns,
-                    &data.asset_storage,
+                    &data.asset_storage.borrow(),
                     &mut world,
                 );
 
-                let map = Map::new(Rc::clone(&tilemap), world);
+                let map = Map::new(Rc::clone(&tilemap), Rc::clone(&data.asset_storage), world);
                 map.create_tilemap_entities();
 
                 let mut play_state = PlayState {
                     map,
                     soft_block_entities: vec![],
                     players: vec![player1, player2],
+                    schedule: Schedule::builder()
+                        .add_thread_local(Player::create_turn_player_system(Rc::clone(
+                            &data.asset_storage,
+                        )))
+                        .build(),
                 };
 
                 play_state.create_soft_blocks();
@@ -160,11 +166,7 @@ impl GameState for PlayState {
             return false;
         }
 
-        Player::handle_event(
-            &mut *self.map.world.borrow_mut(),
-            &state_context.data.asset_storage,
-            event,
-        );
+        Player::handle_event(&mut *self.map.world.borrow_mut(), event);
 
         true
     }
@@ -172,38 +174,11 @@ impl GameState for PlayState {
     fn update(&mut self, state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
         Player::update(
             &mut *self.map.world.borrow_mut(),
-            &state_context.data.asset_storage,
+            &state_context.data.asset_storage.borrow(),
             dt,
         );
+        self.schedule.execute(&mut self.map.world.borrow_mut());
         self.map.update(state_context, dt);
-
-        /*self.players
-        .iter()
-        .filter_map(|player| {
-            let move_direction = player.get_current_move_direction()?;
-            let tile_id = player.get_tile_id_for_move_direction(move_direction)?;
-            let speed = match move_direction {
-                MoveDirection::Up => [0.0, -1.0],
-                MoveDirection::Down => [0.0, 1.0],
-                MoveDirection::Left => [-1.0, 0.0],
-                MoveDirection::Right => [1.0, 0.0],
-            };
-
-            Some((player.tile_uuid, speed, tile_id))
-        })
-        .collect::<Vec<(TileUuid, [f64; 2], TileId)>>()
-        .into_iter()
-        .for_each(|(id, speed, tile_id)| {
-            if let Some(player_tile) = self.map.tiles[1].get_mut_tile_by_id(id) {
-                let [vx, vy] = speed;
-                let (x, y) = player_tile.sprite_holder.sprite.get_position();
-                player_tile
-                    .sprite_holder
-                    .sprite
-                    .set_position(x + vx * dt * 32.0 * 2.0, y + vy * dt * 32.0 * 2.0);
-                player_tile.sprite_holder.update_tile_id(tile_id);
-            }
-        });*/
 
         true
     }

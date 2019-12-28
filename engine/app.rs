@@ -8,9 +8,12 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
+use std::cell::RefCell;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 pub struct AppData {
-    pub asset_storage: AssetStorage,
+    pub asset_storage: Rc<RefCell<AssetStorage>>,
     pub universe: Universe,
 }
 
@@ -18,6 +21,7 @@ pub struct App {
     window: Window,
     events: Events,
     opengl_version: OpenGL,
+    button_storage: HashSet<Button>,
     data: AppData,
 }
 
@@ -34,8 +38,9 @@ impl App {
                 .unwrap_or_else(|e| panic!("Failed to build Window: {}", e)),
             events: Events::new(event_settings),
             opengl_version,
+            button_storage: HashSet::new(),
             data: AppData {
-                asset_storage: AssetStorage::new(),
+                asset_storage: Rc::new(RefCell::new(AssetStorage::new())),
                 universe: Universe::new(),
             },
         }
@@ -48,7 +53,21 @@ impl App {
         while let (Some(event), false) =
             (self.events.next(&mut self.window), state_manager.is_empty())
         {
-            state_manager.handle_event(&mut self.data, &event);
+            if let Some(button_args) = event.button_args() {
+                match button_args.state {
+                    ButtonState::Press => {
+                        // prevent repeated key pressed events when key is hold down
+                        if !self.button_storage.contains(&button_args.button) {
+                            self.button_storage.insert(button_args.button);
+                            state_manager.handle_event(&mut self.data, &event);
+                        }
+                    }
+                    ButtonState::Release => {
+                        self.button_storage.remove(&button_args.button);
+                        state_manager.handle_event(&mut self.data, &event);
+                    }
+                }
+            }
 
             if let Some(update_args) = event.update_args() {
                 state_manager.update(&mut self.data, update_args.dt);

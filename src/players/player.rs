@@ -7,11 +7,13 @@ use engine::components::{
 use engine::game_state::input::{ButtonEvent, ButtonState, PressEvent, ReleaseEvent};
 use engine::game_state::{
     input::{Button, Key},
-    Drawable, Event, EventHandler, GlGraphics, Matrix2d, Updatable,
+    AppData, Drawable, Event, EventHandler, GlGraphics, Matrix2d, Updatable,
 };
 use engine::legion::prelude::*;
 use engine::legion::{entity::Entity, world::World};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
+use std::rc::Rc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MoveDirectionStack(pub Vec<MoveDirection>);
@@ -147,16 +149,14 @@ impl Player {
         move_direction: MoveDirection,
         button_state: ButtonState,
     ) -> Command {
-        let command = move |world: &mut World, asset_storage: &AssetStorage| {
+        let command = move |world: &mut World| {
             Self::store_move_direction(world, player_id, move_direction, button_state);
-            Self::turn_player(world, asset_storage);
-            Self::set_player_animation(world, asset_storage);
         };
 
         Box::new(command)
     }
 
-    pub fn handle_event(world: &mut World, asset_storage: &AssetStorage, event: &Event) {
+    pub fn handle_event(world: &mut World, event: &Event) {
         let mut commands: Vec<Command> = vec![];
         let query = <Read<Controls>>::query();
 
@@ -169,7 +169,7 @@ impl Player {
         }
 
         commands.into_iter().for_each(|command| {
-            command(world, asset_storage);
+            command(world);
         });
     }
 
@@ -184,9 +184,7 @@ impl Player {
         for mut move_direction_stack in query.iter(world) {
             match button_state {
                 ButtonState::Press => {
-                    if !move_direction_stack.0.contains(&move_direction) {
-                        move_direction_stack.0.push(move_direction);
-                    }
+                    move_direction_stack.0.push(move_direction);
                 }
                 ButtonState::Release => {
                     move_direction_stack
@@ -199,71 +197,52 @@ impl Player {
         }
     }
 
-    fn turn_player(world: &mut World, asset_storage: &AssetStorage) {
-        let query = <(
-            Read<MoveDirectionStack>,
-            Read<TilesetType>,
-            Write<DefaultTileId>,
-            Write<CurrentTileId>,
-        )>::query()
-        .filter(changed::<MoveDirectionStack>());
+    pub fn create_turn_player_system(
+        asset_storage: Rc<RefCell<AssetStorage>>,
+    ) -> Box<dyn Runnable> {
+        SystemBuilder::new("turn_player")
+            .with_query(
+                <(
+                    Read<MoveDirectionStack>,
+                    Read<TilesetType>,
+                    Write<DefaultTileId>,
+                    Write<CurrentTileId>,
+                )>::query()
+                .filter(changed::<MoveDirectionStack>()),
+            )
+            .build_thread_local(move |commands, world, resources, query| {
+                for (
+                    move_direction_stack,
+                    tileset_type,
+                    mut default_tile_id,
+                    mut current_tile_id,
+                ) in query.iter(&mut *world)
+                {
+                    if let TilesetType::Tileset(id) = *tileset_type {
+                        let tileset = asset_storage.borrow().get_asset::<Tileset>(id);
 
-        for (move_direction_stack, tileset_type, mut default_tile_id, mut current_tile_id) in
-            query.iter(world)
-        {
-            if let TilesetType::Tileset(id) = *tileset_type {
-                let tileset = asset_storage.get_asset::<Tileset>(id);
+                        let tile_id = move_direction_stack
+                            .0
+                            .last()
+                            .map(|move_direction| match move_direction {
+                                MoveDirection::Up => PlayerFaceDirection::Up,
+                                MoveDirection::Down => PlayerFaceDirection::Down,
+                                MoveDirection::Left => PlayerFaceDirection::Left,
+                                MoveDirection::Right => PlayerFaceDirection::Right,
+                            })
+                            .and_then(|face_direction| {
+                                Self::map_face_directions_to_tile_ids(&tileset)
+                                    .get(&face_direction)
+                                    .cloned()
+                            });
 
-                let tile_id = move_direction_stack
-                    .0
-                    .last()
-                    .map(|move_direction| match move_direction {
-                        MoveDirection::Up => PlayerFaceDirection::Up,
-                        MoveDirection::Down => PlayerFaceDirection::Down,
-                        MoveDirection::Left => PlayerFaceDirection::Left,
-                        MoveDirection::Right => PlayerFaceDirection::Right,
-                    })
-                    .and_then(|face_direction| {
-                        Self::map_face_directions_to_tile_ids(&tileset)
-                            .get(&face_direction)
-                            .cloned()
-                    });
-
-                if let Some(tile_id) = tile_id {
-                    if default_tile_id.0 != tile_id {
-                        default_tile_id.0 = tile_id;
-                        current_tile_id.0 = tile_id;
-                    }
-                }
-            }
-        }
-    }
-
-    fn set_player_animation(world: &mut World, asset_storage: &AssetStorage) {
-        let query = <(Read<TilesetType>, Read<DefaultTileId>, Write<AnimationType>)>::query()
-            .filter(changed::<DefaultTileId>());
-
-        for (tileset_type, default_tile_id, mut animation_type) in query.iter(world) {
-            if let TilesetType::Tileset(id) = *tileset_type {
-                let tileset = asset_storage.get_asset::<Tileset>(id);
-
-                let mut animation = tileset
-                    .animation_frames_holder
-                    .get(&default_tile_id.0)
-                    .cloned()
-                    .map(|frames| Animation::new(frames));
-
-                if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
-                    if !old_animation.is_paused() && !old_animation.is_stopped() {
-                        if let Some(animation) = &mut animation {
-                            animation.play();
+                        if let Some(tile_id) = tile_id {
+                            default_tile_id.0 = tile_id;
+                            current_tile_id.0 = tile_id;
                         }
                     }
                 }
-
-                *animation_type = AnimationType::Ownd(animation);
-            }
-        }
+            })
     }
 
     pub fn update(world: &mut World, asset_storage: &AssetStorage, dt: f64) {}

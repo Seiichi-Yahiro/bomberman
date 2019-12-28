@@ -38,7 +38,7 @@ impl GameStateBuilderBuilder {
     ) -> GameStateBuilder {
         let builder = move |data: &mut AppData| {
             self.asset_loaders.into_iter().for_each(|load| {
-                load(&mut data.asset_storage);
+                load(&mut data.asset_storage.borrow_mut());
             });
 
             f(data)

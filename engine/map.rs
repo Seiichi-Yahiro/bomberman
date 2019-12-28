@@ -1,7 +1,9 @@
 use crate::animation::Animation;
 use crate::app::AppData;
+use crate::asset_storage::AssetStorage;
 use crate::components::{
-    AnimationType, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
+    AnimationType, CurrentTileId, DefaultTileId, DeltaTime, Layer, MapPosition, ScreenPosition,
+    TilesetType,
 };
 use crate::state_manager::StateContext;
 use crate::texture_holder::SpriteTextureDataExt;
@@ -22,12 +24,17 @@ use std::sync::{Arc, RwLock};
 
 pub struct Map {
     pub tilemap: Rc<Tilemap>,
-    pub tile_animations: HashMap<TileId, Arc<RwLock<Animation>>>,
+    pub tile_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
     pub world: RefCell<World>,
+    animation_schedule: Schedule,
 }
 
 impl Map {
-    pub fn new(tilemap: Rc<Tilemap>, world: World) -> Map {
+    pub fn new(
+        tilemap: Rc<Tilemap>,
+        asset_storage: Rc<RefCell<AssetStorage>>,
+        world: World,
+    ) -> Map {
         let tile_animations = tilemap
             .get_used_tile_ids()
             .iter()
@@ -45,7 +52,17 @@ impl Map {
             })
             .collect();
 
+        let tile_animations = Arc::new(RwLock::new(tile_animations));
+
         Map {
+            animation_schedule: Schedule::builder()
+                .add_thread_local(AnimationType::create_exchange_animation_system(
+                    asset_storage,
+                ))
+                .add_system(AnimationType::create_update_animation_system(Arc::clone(
+                    &tile_animations,
+                )))
+                .build(),
             tilemap,
             tile_animations,
             world: RefCell::new(world),
@@ -67,7 +84,9 @@ impl Map {
                             DefaultTileId(*tile_id),
                             CurrentTileId(*tile_id),
                             TilesetType::Tilemap,
-                            AnimationType::Shared(self.tile_animations.get(tile_id).cloned()),
+                            AnimationType::Shared(
+                                self.tile_animations.read().unwrap().get(tile_id).cloned(),
+                            ),
                         )
                     })
                     .collect_vec();
@@ -81,24 +100,9 @@ impl Map {
 
 impl Updatable for Map {
     fn update(&mut self, state_context: &mut StateContext, dt: f64) {
-        self.tile_animations.values().for_each(|animation| {
-            animation.write().unwrap().update(state_context, dt);
-        });
-
-        let query = <(Write<AnimationType>, Write<CurrentTileId>)>::query();
-
-        for (mut animation_type, mut current_tile_id) in query.iter(&mut self.world.borrow_mut()) {
-            match &mut *animation_type {
-                AnimationType::Shared(Some(animation)) => {
-                    current_tile_id.0 = animation.read().unwrap().get_current_tile_id();
-                }
-                AnimationType::Ownd(Some(animation)) => {
-                    animation.update(state_context, dt);
-                    current_tile_id.0 = animation.get_current_tile_id();
-                }
-                _ => {}
-            }
-        }
+        self.world.borrow_mut().resources.insert(DeltaTime(dt));
+        self.animation_schedule
+            .execute(&mut *self.world.borrow_mut());
     }
 }
 
@@ -114,7 +118,9 @@ impl Drawable for Map {
             for (pos, tile_id, tileset_type) in query.iter(&mut self.world.borrow_mut()) {
                 let texture_data = match *tileset_type {
                     TilesetType::Tilemap => Rc::clone(&self.tilemap.tileset),
-                    TilesetType::Tileset(id) => data.asset_storage.get_asset::<Tileset>(id),
+                    TilesetType::Tileset(id) => {
+                        data.asset_storage.borrow().get_asset::<Tileset>(id)
+                    }
                 }
                 .texture_holder
                 .get_texture_data(tile_id.0);
