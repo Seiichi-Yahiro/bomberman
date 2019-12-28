@@ -2,12 +2,13 @@ use crate::arenas::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
 use crate::players::{
-    MoveDirection, Player, PlayerAction, PlayerControlsMap, PlayerFaceDirection, PlayerId,
+    MoveDirection, MoveDirectionStack, Player, PlayerAction, PlayerFaceDirection, PlayerId,
 };
 use engine::asset::{Object, PropertyValue, TilePosition, Tilemap, Tileset};
 use engine::components::{
-    CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
+    Controls, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
 };
+use engine::game_state::input::*;
 use engine::game_state::*;
 use engine::legion::prelude::*;
 use engine::map::Map;
@@ -67,53 +68,6 @@ impl PlayState {
 
                 Box::new(play_state)
             })
-    }
-
-    fn create_player_controls(player_id: PlayerId) -> PlayerControlsMap {
-        let mut controls = HashMap::new();
-
-        match player_id {
-            PlayerId::Player1 => {
-                controls.insert(
-                    Button::Keyboard(Key::Left),
-                    PlayerAction::Movement(MoveDirection::Left),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::Right),
-                    PlayerAction::Movement(MoveDirection::Right),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::Up),
-                    PlayerAction::Movement(MoveDirection::Up),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::Down),
-                    PlayerAction::Movement(MoveDirection::Down),
-                );
-            }
-            PlayerId::Player2 => {
-                controls.insert(
-                    Button::Keyboard(Key::A),
-                    PlayerAction::Movement(MoveDirection::Left),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::D),
-                    PlayerAction::Movement(MoveDirection::Right),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::W),
-                    PlayerAction::Movement(MoveDirection::Up),
-                );
-                controls.insert(
-                    Button::Keyboard(Key::S),
-                    PlayerAction::Movement(MoveDirection::Down),
-                );
-            }
-            PlayerId::Player3 => {}
-            PlayerId::Player4 => {}
-        }
-
-        controls
     }
 
     fn create_soft_blocks(&mut self) {
@@ -206,14 +160,21 @@ impl GameState for PlayState {
             return false;
         }
 
-        /*self.players
-        .iter_mut()
-        .for_each(|player| player.handle_event(event));*/
+        Player::handle_event(
+            &mut *self.map.world.borrow_mut(),
+            &state_context.data.asset_storage,
+            event,
+        );
 
         true
     }
 
     fn update(&mut self, state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
+        Player::update(
+            &mut *self.map.world.borrow_mut(),
+            &state_context.data.asset_storage,
+            dt,
+        );
         self.map.update(state_context, dt);
 
         /*self.players

@@ -1,5 +1,9 @@
 use crate::animation::Animation;
+use crate::asset_storage::AssetStorage;
 use crate::tileset::TileId;
+use legion::world::World;
+use piston::input::{Button, ButtonState};
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -46,3 +50,9 @@ pub enum AnimationType {
     Shared(Option<Arc<RwLock<Animation>>>),
     Ownd(Option<Animation>),
 }
+
+pub type Command = Box<dyn Fn(&mut World, &AssetStorage) + Send + Sync>;
+pub type CommandFactory = Box<dyn Fn(ButtonState) -> Command + Send + Sync>;
+pub type ControlsMap = HashMap<Button, CommandFactory>;
+
+pub struct Controls(pub ControlsMap);
