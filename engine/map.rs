@@ -5,18 +5,16 @@ use crate::components::{
     AnimationType, CurrentTileId, DefaultTileId, DeltaTime, Layer, MapPosition, ScreenPosition,
     TilesetType,
 };
+use crate::sprite::Sprite;
 use crate::state_manager::StateContext;
-use crate::texture_holder::SpriteTextureDataExt;
 use crate::tilemap::Tilemap;
 use crate::tileset::{TileId, Tileset};
-use crate::traits::game_loop_event::{Drawable, EventHandler, Updatable};
+use crate::traits::game_loop_event::{Drawable, Updatable};
 use graphics::math::Matrix2d;
 use graphics::Transformed;
 use itertools::Itertools;
 use legion::prelude::*;
 use opengl_graphics::{GlGraphics, Texture};
-use piston::input::Event;
-use sprite::Sprite;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;

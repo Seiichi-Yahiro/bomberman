@@ -2,10 +2,9 @@ use crate::tileset::TileId;
 use graphics::types::SourceRectangle;
 use graphics::ImageSize;
 use opengl_graphics::{Texture, TextureSettings};
-use sprite::Sprite;
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct TextureHolder {
@@ -29,7 +28,7 @@ impl TextureHolder {
             TextureHolder {
                 texture_map: TextureMap::default(),
                 spritesheet_list: vec![Spritesheet {
-                    texture: Rc::new(Self::load_texture(&folder.join(&image.source))),
+                    texture: Arc::new(Self::load_texture(&folder.join(&image.source))),
                     tile_width: tileset.tile_width,
                     tile_height: tileset.tile_height,
                     first_gid: tileset.first_gid,
@@ -42,7 +41,7 @@ impl TextureHolder {
                 .map(|tile| {
                     let texture =
                         Self::load_texture(&folder.join(&tile.images.first().unwrap().source));
-                    (tile.id + tileset.first_gid, Rc::new(texture))
+                    (tile.id + tileset.first_gid, Arc::new(texture))
                 })
                 .collect();
 
@@ -73,7 +72,7 @@ impl TextureHolder {
 }
 
 struct TextureMap {
-    pub map: HashMap<TileId, Rc<Texture>>,
+    pub map: HashMap<TileId, Arc<Texture>>,
 }
 
 impl Default for TextureMap {
@@ -85,14 +84,14 @@ impl Default for TextureMap {
 }
 
 impl TextureMap {
-    pub fn new(map: HashMap<TileId, Rc<Texture>>) -> TextureMap {
+    pub fn new(map: HashMap<TileId, Arc<Texture>>) -> TextureMap {
         TextureMap { map }
     }
 
     pub fn get_texture_data(&self, tile_id: TileId) -> Option<TextureData> {
         self.map.get(&tile_id).map(|texture| {
             TextureData::new(
-                Rc::clone(texture),
+                Arc::clone(texture),
                 [
                     0.0,
                     0.0,
@@ -105,7 +104,7 @@ impl TextureMap {
 }
 
 struct Spritesheet {
-    pub texture: Rc<Texture>,
+    pub texture: Arc<Texture>,
     pub tile_width: u32,
     pub tile_height: u32,
     pub first_gid: u32,
@@ -140,37 +139,18 @@ impl Spritesheet {
 
     pub fn get_texture_data(&self, tile_id: TileId) -> Option<TextureData> {
         self.get_src_rect(tile_id)
-            .map(|rect| TextureData::new(Rc::clone(&self.texture), rect))
+            .map(|rect| TextureData::new(Arc::clone(&self.texture), rect))
     }
 }
 
 #[derive(Clone)]
 pub struct TextureData {
-    pub texture: Rc<Texture>,
+    pub texture: Arc<Texture>,
     pub src_rect: SourceRectangle,
 }
 
 impl TextureData {
-    pub fn new(texture: Rc<Texture>, src_rect: SourceRectangle) -> TextureData {
+    pub fn new(texture: Arc<Texture>, src_rect: SourceRectangle) -> TextureData {
         TextureData { texture, src_rect }
-    }
-}
-
-pub trait SpriteTextureDataExt {
-    fn from_texture_data(texture_data: TextureData) -> Self;
-
-    fn update_texture_data(&mut self, texture_data: TextureData);
-}
-
-impl SpriteTextureDataExt for Sprite<Texture> {
-    fn from_texture_data(texture_data: TextureData) -> Self {
-        let mut sprite = Sprite::from_texture_rect(texture_data.texture, texture_data.src_rect);
-        sprite.set_anchor(0.0, 0.0);
-        sprite
-    }
-
-    fn update_texture_data(&mut self, texture_data: TextureData) {
-        self.set_texture(texture_data.texture);
-        self.set_src_rect(texture_data.src_rect);
     }
 }

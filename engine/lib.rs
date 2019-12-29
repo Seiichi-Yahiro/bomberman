@@ -6,7 +6,7 @@ pub mod components;
 mod game_state_builder;
 pub mod map;
 pub mod scene;
-mod sprite_holder;
+pub mod sprite;
 mod state_manager;
 mod texture_holder;
 mod tilemap;
@@ -33,10 +33,6 @@ pub mod game_state {
 
 pub mod texture {
     pub use super::texture_holder::*;
-}
-
-pub mod sprite {
-    pub use super::sprite_holder::*;
 }
 
 pub mod asset {

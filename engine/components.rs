@@ -7,7 +7,7 @@ use legion::system::SystemBuilder;
 use legion::world::World;
 use piston::input::{Button, ButtonState};
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 

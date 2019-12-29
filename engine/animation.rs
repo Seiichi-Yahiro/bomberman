@@ -1,6 +1,4 @@
-use crate::state_manager::StateContext;
 use crate::tileset::TileId;
-use crate::traits::game_loop_event::Updatable;
 use std::collections::HashMap;
 use std::sync::Arc;
 
