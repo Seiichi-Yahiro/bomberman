@@ -1,9 +1,7 @@
 use crate::animation::Animation;
 use crate::app::AppData;
-use crate::asset_storage::AssetStorage;
 use crate::components::{
     AnimationType, CurrentTileId, DefaultTileId, DeltaTime, Layer, MapPosition, ScreenPosition,
-    TilesetType,
 };
 use crate::sprite::Sprite;
 use crate::state_manager::StateContext;
@@ -17,22 +15,17 @@ use legion::prelude::*;
 use opengl_graphics::{GlGraphics, Texture};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 pub struct Map {
-    pub tilemap: Rc<Tilemap>,
+    pub tilemap: Arc<Tilemap>,
     pub tile_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
     pub world: RefCell<World>,
     animation_schedule: Schedule,
 }
 
 impl Map {
-    pub fn new(
-        tilemap: Rc<Tilemap>,
-        asset_storage: Rc<RefCell<AssetStorage>>,
-        world: World,
-    ) -> Map {
+    pub fn new(tilemap: Arc<Tilemap>, world: World) -> Map {
         let tile_animations = tilemap
             .get_used_tile_ids()
             .iter()
@@ -54,9 +47,7 @@ impl Map {
 
         Map {
             animation_schedule: Schedule::builder()
-                .add_thread_local(AnimationType::create_exchange_animation_system(
-                    asset_storage,
-                ))
+                .add_system(AnimationType::create_exchange_animation_system())
                 .add_system(AnimationType::create_update_animation_system(Arc::clone(
                     &tile_animations,
                 )))
@@ -81,7 +72,7 @@ impl Map {
                             ScreenPosition::new(x as f64, y as f64),
                             DefaultTileId(*tile_id),
                             CurrentTileId(*tile_id),
-                            TilesetType::Tilemap,
+                            Arc::clone(&self.tilemap.tileset),
                             AnimationType::Shared(
                                 self.tile_animations.read().unwrap().get(tile_id).cloned(),
                             ),
@@ -110,18 +101,15 @@ impl Drawable for Map {
 
         for layer in 0..self.tilemap.tiles.len() {
             let layer = Layer(layer);
-            let query = <(Read<ScreenPosition>, Read<CurrentTileId>, Read<TilesetType>)>::query()
-                .filter(tag_value(&layer));
+            let query = <(
+                Read<ScreenPosition>,
+                Read<CurrentTileId>,
+                Read<Arc<Tileset>>,
+            )>::query()
+            .filter(tag_value(&layer));
 
-            for (pos, tile_id, tileset_type) in query.iter(&mut self.world.borrow_mut()) {
-                let texture_data = match *tileset_type {
-                    TilesetType::Tilemap => Rc::clone(&self.tilemap.tileset),
-                    TilesetType::Tileset(id) => {
-                        data.asset_storage.borrow().get_asset::<Tileset>(id)
-                    }
-                }
-                .texture_holder
-                .get_texture_data(tile_id.0);
+            for (pos, tile_id, tileset) in query.iter(&mut self.world.borrow_mut()) {
+                let texture_data = tileset.texture_holder.get_texture_data(tile_id.0);
 
                 if let Some(texture_data) = texture_data {
                     if let Some(sprite) = &mut sprite {

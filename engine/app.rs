@@ -1,4 +1,4 @@
-use crate::asset_storage::AssetStorage;
+use crate::asset_storage::{AssetStorage, AssetStorageResource};
 use crate::game_state_builder::GameStateBuilder;
 use crate::state_manager::StateManager;
 use crate::traits::game_loop_event::*;
@@ -8,12 +8,11 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
-use std::cell::RefCell;
 use std::collections::HashSet;
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 pub struct AppData {
-    pub asset_storage: Rc<RefCell<AssetStorage>>,
+    pub asset_storage: AssetStorageResource,
     pub universe: Universe,
 }
 
@@ -40,7 +39,7 @@ impl App {
             opengl_version,
             button_storage: HashSet::new(),
             data: AppData {
-                asset_storage: Rc::new(RefCell::new(AssetStorage::new())),
+                asset_storage: Arc::new(RwLock::new(AssetStorage::new())),
                 universe: Universe::new(),
             },
         }

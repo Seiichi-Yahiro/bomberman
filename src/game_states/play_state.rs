@@ -1,20 +1,16 @@
 use crate::arenas::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
-use crate::players::{
-    MoveDirection, MoveDirectionStack, Player, PlayerAction, PlayerFaceDirection, PlayerId,
-};
+use crate::players::{Player, PlayerId};
 use engine::asset::{Object, PropertyValue, TilePosition, Tilemap, Tileset};
-use engine::components::{
-    Controls, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition, TilesetType,
-};
+use engine::components::{CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition};
 use engine::game_state::input::*;
 use engine::game_state::*;
 use engine::legion::prelude::*;
 use engine::map::Map;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 const TILEMAP_ID: &str = "ashlands";
 
@@ -38,25 +34,30 @@ impl PlayState {
                 PlayerId::Player2.to_str(),
             )
             .build(|data| {
-                let tilemap = data.asset_storage.borrow().get_asset::<Tilemap>(TILEMAP_ID);
+                let tilemap = data
+                    .asset_storage
+                    .read()
+                    .unwrap()
+                    .get_asset::<Tilemap>(TILEMAP_ID);
                 let mut world = data.universe.create_world();
+                world.resources.insert(Arc::clone(&data.asset_storage));
 
                 let player_spawns = Self::get_player_spawns(&tilemap);
 
                 let player1 = Player::create_player(
                     PlayerId::Player1,
                     &player_spawns,
-                    &data.asset_storage.borrow(),
+                    &data.asset_storage.read().unwrap(),
                     &mut world,
                 );
                 let player2 = Player::create_player(
                     PlayerId::Player2,
                     &player_spawns,
-                    &data.asset_storage.borrow(),
+                    &data.asset_storage.read().unwrap(),
                     &mut world,
                 );
 
-                let map = Map::new(Rc::clone(&tilemap), Rc::clone(&data.asset_storage), world);
+                let map = Map::new(Arc::clone(&tilemap), world);
                 map.create_tilemap_entities();
 
                 let mut play_state = PlayState {
@@ -64,9 +65,7 @@ impl PlayState {
                     soft_block_entities: vec![],
                     players: vec![player1, player2],
                     schedule: Schedule::builder()
-                        .add_thread_local(Player::create_turn_player_system(Rc::clone(
-                            &data.asset_storage,
-                        )))
+                        .add_system(Player::create_turn_player_system())
                         .build(),
                 };
 
@@ -103,7 +102,7 @@ impl PlayState {
                     ScreenPosition::new(x as f64, y as f64),
                     DefaultTileId(object.gid),
                     CurrentTileId(object.gid),
-                    TilesetType::Tilemap,
+                    Arc::clone(&self.map.tilemap.tileset),
                 );
 
                 Some((*layer_id, components))
@@ -174,7 +173,7 @@ impl GameState for PlayState {
     fn update(&mut self, state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
         Player::update(
             &mut *self.map.world.borrow_mut(),
-            &state_context.data.asset_storage.borrow(),
+            &state_context.data.asset_storage.read().unwrap(),
             dt,
         );
         self.schedule.execute(&mut self.map.world.borrow_mut());

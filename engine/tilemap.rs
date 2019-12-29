@@ -4,12 +4,12 @@ use crate::utils::flatten_2d;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Tilemap {
     pub object_groups: HashMap<String, Vec<tiled::Object>>,
     pub tiles: Vec<HashMap<TilePosition, TileId>>,
-    pub tileset: Rc<Tileset>,
+    pub tileset: Arc<Tileset>,
     pub width: u32,
     pub height: u32,
 }
@@ -109,7 +109,7 @@ impl Asset for Tilemap {
             height: tilemap.height,
             tiles: Self::convert_tilemap_to_tiles(&tilemap),
             object_groups: Self::extract_object_groups_from_tilemap(&tilemap),
-            tileset: Rc::new(tileset),
+            tileset: Arc::new(tileset),
         }
     }
 }

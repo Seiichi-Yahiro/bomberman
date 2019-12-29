@@ -1,14 +1,11 @@
 use crate::animation::Animation;
-use crate::asset_storage::AssetStorage;
 use crate::tileset::{TileId, Tileset};
 use legion::prelude::*;
 use legion::schedule::Schedulable;
 use legion::system::SystemBuilder;
 use legion::world::World;
 use piston::input::{Button, ButtonState};
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,12 +44,6 @@ pub struct CurrentTileId(pub TileId);
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DefaultTileId(pub TileId);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TilesetType<'s> {
-    Tilemap,
-    Tileset(&'s str),
-}
-
 #[derive(Clone, Debug)]
 pub enum AnimationType {
     Shared(Option<Arc<RwLock<Animation>>>),
@@ -66,7 +57,7 @@ impl AnimationType {
         SystemBuilder::new("update_animation")
             .read_resource::<DeltaTime>()
             .with_query(<(Write<AnimationType>, Write<CurrentTileId>)>::query())
-            .build(move |commands, world, dt, query| {
+            .build(move |_commands, world, dt, query| {
                 shared_animations
                     .read()
                     .unwrap()
@@ -90,35 +81,33 @@ impl AnimationType {
             })
     }
 
-    pub fn create_exchange_animation_system(
-        asset_storage: Rc<RefCell<AssetStorage>>,
-    ) -> Box<dyn Runnable> {
+    pub fn create_exchange_animation_system() -> Box<dyn Schedulable> {
         SystemBuilder::new("set_animation")
             .with_query(
-                <(Read<TilesetType>, Read<DefaultTileId>, Write<AnimationType>)>::query()
-                    .filter(changed::<DefaultTileId>()),
+                <(
+                    Read<Arc<Tileset>>,
+                    Read<DefaultTileId>,
+                    Write<AnimationType>,
+                )>::query()
+                .filter(changed::<DefaultTileId>()),
             )
-            .build_thread_local(move |commands, world, resources, query| {
-                for (tileset_type, default_tile_id, mut animation_type) in query.iter(&mut *world) {
-                    if let TilesetType::Tileset(id) = *tileset_type {
-                        let tileset = asset_storage.borrow().get_asset::<Tileset>(id);
+            .build(move |_commands, world, _resources, query| {
+                for (tileset, default_tile_id, mut animation_type) in query.iter(&mut *world) {
+                    let mut animation = tileset
+                        .animation_frames_holder
+                        .get(&default_tile_id.0)
+                        .cloned()
+                        .map(|frames| Animation::new(frames));
 
-                        let mut animation = tileset
-                            .animation_frames_holder
-                            .get(&default_tile_id.0)
-                            .cloned()
-                            .map(|frames| Animation::new(frames));
-
-                        if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
-                            if !old_animation.is_paused() && !old_animation.is_stopped() {
-                                if let Some(animation) = &mut animation {
-                                    animation.play();
-                                }
+                    if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
+                        if !old_animation.is_paused() && !old_animation.is_stopped() {
+                            if let Some(animation) = &mut animation {
+                                animation.play();
                             }
                         }
-
-                        *animation_type = AnimationType::Ownd(animation);
                     }
+
+                    *animation_type = AnimationType::Ownd(animation);
                 }
             })
     }

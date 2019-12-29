@@ -2,18 +2,17 @@ use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
 use engine::components::{
     AnimationType, Command, Controls, ControlsMap, CurrentTileId, DefaultTileId, Layer,
-    MapPosition, ScreenPosition, TilesetType,
+    MapPosition, ScreenPosition,
 };
-use engine::game_state::input::{ButtonEvent, ButtonState, PressEvent, ReleaseEvent};
+use engine::game_state::input::{ButtonEvent, ButtonState};
 use engine::game_state::{
     input::{Button, Key},
-    AppData, Drawable, Event, EventHandler, GlGraphics, Matrix2d, Updatable,
+    Event,
 };
 use engine::legion::prelude::*;
 use engine::legion::{entity::Entity, world::World};
-use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
-use std::rc::Rc;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MoveDirectionStack(pub Vec<MoveDirection>);
@@ -43,7 +42,7 @@ impl Player {
                     ScreenPosition::new(*x as f64, *y as f64),
                     DefaultTileId(tile_id),
                     CurrentTileId(tile_id),
-                    TilesetType::Tileset(id.to_str()),
+                    Arc::clone(&tileset),
                     Self::create_player_controls(id),
                     MoveDirectionStack(vec![]),
                     AnimationType::Ownd(
@@ -197,49 +196,39 @@ impl Player {
         }
     }
 
-    pub fn create_turn_player_system(
-        asset_storage: Rc<RefCell<AssetStorage>>,
-    ) -> Box<dyn Runnable> {
+    pub fn create_turn_player_system() -> Box<dyn Schedulable> {
         SystemBuilder::new("turn_player")
             .with_query(
                 <(
                     Read<MoveDirectionStack>,
-                    Read<TilesetType>,
+                    Read<Arc<Tileset>>,
                     Write<DefaultTileId>,
                     Write<CurrentTileId>,
                 )>::query()
                 .filter(changed::<MoveDirectionStack>()),
             )
-            .build_thread_local(move |commands, world, resources, query| {
-                for (
-                    move_direction_stack,
-                    tileset_type,
-                    mut default_tile_id,
-                    mut current_tile_id,
-                ) in query.iter(&mut *world)
+            .build(move |_commands, world, _resources, query| {
+                for (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id) in
+                    query.iter(&mut *world)
                 {
-                    if let TilesetType::Tileset(id) = *tileset_type {
-                        let tileset = asset_storage.borrow().get_asset::<Tileset>(id);
+                    let tile_id = move_direction_stack
+                        .0
+                        .last()
+                        .map(|move_direction| match move_direction {
+                            MoveDirection::Up => PlayerFaceDirection::Up,
+                            MoveDirection::Down => PlayerFaceDirection::Down,
+                            MoveDirection::Left => PlayerFaceDirection::Left,
+                            MoveDirection::Right => PlayerFaceDirection::Right,
+                        })
+                        .and_then(|face_direction| {
+                            Self::map_face_directions_to_tile_ids(&*tileset)
+                                .get(&face_direction)
+                                .cloned()
+                        });
 
-                        let tile_id = move_direction_stack
-                            .0
-                            .last()
-                            .map(|move_direction| match move_direction {
-                                MoveDirection::Up => PlayerFaceDirection::Up,
-                                MoveDirection::Down => PlayerFaceDirection::Down,
-                                MoveDirection::Left => PlayerFaceDirection::Left,
-                                MoveDirection::Right => PlayerFaceDirection::Right,
-                            })
-                            .and_then(|face_direction| {
-                                Self::map_face_directions_to_tile_ids(&tileset)
-                                    .get(&face_direction)
-                                    .cloned()
-                            });
-
-                        if let Some(tile_id) = tile_id {
-                            default_tile_id.0 = tile_id;
-                            current_tile_id.0 = tile_id;
-                        }
+                    if let Some(tile_id) = tile_id {
+                        default_tile_id.0 = tile_id;
+                        current_tile_id.0 = tile_id;
                     }
                 }
             })
