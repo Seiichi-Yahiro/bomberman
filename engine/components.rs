@@ -66,7 +66,7 @@ impl AnimationType {
                         animation.write().unwrap().update(dt.0);
                     });
 
-                for (mut animation_type, mut current_tile_id) in query.iter(&mut *world) {
+                query.par_for_each(&mut *world, |(mut animation_type, mut current_tile_id)| {
                     match &mut *animation_type {
                         AnimationType::Shared(Some(animation)) => {
                             current_tile_id.0 = animation.read().unwrap().get_current_tile_id();
@@ -76,8 +76,8 @@ impl AnimationType {
                             current_tile_id.0 = animation.get_current_tile_id();
                         }
                         _ => {}
-                    }
-                }
+                    };
+                });
             })
     }
 
@@ -92,23 +92,26 @@ impl AnimationType {
                 .filter(changed::<DefaultTileId>()),
             )
             .build(move |_commands, world, _resources, query| {
-                for (tileset, default_tile_id, mut animation_type) in query.iter(&mut *world) {
-                    let mut animation = tileset
-                        .animation_frames_holder
-                        .get(&default_tile_id.0)
-                        .cloned()
-                        .map(|frames| Animation::new(frames));
+                query.par_for_each(
+                    &mut *world,
+                    |(tileset, default_tile_id, mut animation_type)| {
+                        let mut animation = tileset
+                            .animation_frames_holder
+                            .get(&default_tile_id.0)
+                            .cloned()
+                            .map(|frames| Animation::new(frames));
 
-                    if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
-                        if !old_animation.is_paused() && !old_animation.is_stopped() {
-                            if let Some(animation) = &mut animation {
-                                animation.play();
+                        if let Some(animation) = &mut animation {
+                            if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
+                                if !old_animation.is_paused() && !old_animation.is_stopped() {
+                                    animation.play();
+                                }
                             }
                         }
-                    }
 
-                    *animation_type = AnimationType::Ownd(animation);
-                }
+                        *animation_type = AnimationType::Ownd(animation);
+                    },
+                );
             })
     }
 }
