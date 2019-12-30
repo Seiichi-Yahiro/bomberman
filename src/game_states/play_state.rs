@@ -27,11 +27,11 @@ impl PlayState {
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
             .load_asset::<Tileset>(
                 "assets/textures/player/player1.xml",
-                PlayerId::Player1.to_str(),
+                PlayerId::Player1.as_str(),
             )
             .load_asset::<Tileset>(
                 "assets/textures/player/player2.xml",
-                PlayerId::Player2.to_str(),
+                PlayerId::Player2.as_str(),
             )
             .build(|data| {
                 let tilemap = data

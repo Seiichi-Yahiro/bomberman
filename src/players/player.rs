@@ -27,12 +27,8 @@ impl Player {
         world: &mut World,
     ) -> Entity {
         let [x, y] = player_spawns.get(&id).unwrap();
-        let tileset = asset_storage.get_asset::<Tileset>(id.to_str());
-        let face_directions_to_tile_ids = Player::map_face_directions_to_tile_ids(&tileset);
-        let tile_id = face_directions_to_tile_ids
-            .get(&PlayerFaceDirection::Down)
-            .unwrap()
-            .clone();
+        let tileset = asset_storage.get_asset::<Tileset>(id.as_str());
+        let tile_id = PlayerFaceDirection::Down.get_tile_id(&tileset).unwrap();
 
         world
             .insert(
@@ -61,23 +57,6 @@ impl Player {
             .first()
             .copied()
             .unwrap()
-    }
-
-    pub fn map_face_directions_to_tile_ids(
-        tileset: &Tileset,
-    ) -> HashMap<PlayerFaceDirection, TileId> {
-        tileset
-            .properties
-            .iter()
-            .filter_map(
-                |(&tile_id, properties)| match properties.get("face_direction") {
-                    Some(PropertyValue::StringValue(face_direction)) => {
-                        Some((PlayerFaceDirection::from(face_direction.as_ref()), tile_id))
-                    }
-                    _ => None,
-                },
-            )
-            .collect()
     }
 
     fn create_player_controls(player_id: PlayerId) -> Controls {
@@ -220,11 +199,7 @@ impl Player {
                             MoveDirection::Left => PlayerFaceDirection::Left,
                             MoveDirection::Right => PlayerFaceDirection::Right,
                         })
-                        .and_then(|face_direction| {
-                            Self::map_face_directions_to_tile_ids(&*tileset)
-                                .get(&face_direction)
-                                .cloned()
-                        });
+                        .and_then(|face_direction| face_direction.get_tile_id(&*tileset));
 
                     if let Some(tile_id) = tile_id {
                         default_tile_id.0 = tile_id;
@@ -246,8 +221,14 @@ pub enum PlayerId {
 }
 
 impl PlayerId {
-    pub fn to_str(&self) -> &'static str {
-        match self {
+    pub fn as_str(&self) -> &'static str {
+        self.into()
+    }
+}
+
+impl From<&PlayerId> for &str {
+    fn from(player_id: &PlayerId) -> Self {
+        match player_id {
             PlayerId::Player1 => "player1",
             PlayerId::Player2 => "player2",
             PlayerId::Player3 => "player3",
@@ -276,6 +257,27 @@ pub enum PlayerFaceDirection {
     Right,
 }
 
+impl PlayerFaceDirection {
+    pub fn get_tile_id(&self, tileset: &Tileset) -> Option<TileId> {
+        tileset
+            .properties
+            .iter()
+            .find(
+                |(tile_id, properties)| match properties.get("face_direction") {
+                    Some(PropertyValue::StringValue(face_direction)) => {
+                        self.as_str() == face_direction.as_str()
+                    }
+                    _ => false,
+                },
+            )
+            .map(|(tile_id, _)| *tile_id)
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.into()
+    }
+}
+
 impl From<&str> for PlayerFaceDirection {
     fn from(face_direction: &str) -> Self {
         match face_direction {
@@ -287,6 +289,17 @@ impl From<&str> for PlayerFaceDirection {
                 "Cannot create PlayerFaceDirection from {}",
                 face_direction
             )),
+        }
+    }
+}
+
+impl From<&PlayerFaceDirection> for &str {
+    fn from(player_face_direction: &PlayerFaceDirection) -> Self {
+        match player_face_direction {
+            PlayerFaceDirection::Down => "down",
+            PlayerFaceDirection::Up => "up",
+            PlayerFaceDirection::Left => "left",
+            PlayerFaceDirection::Right => "right",
         }
     }
 }
