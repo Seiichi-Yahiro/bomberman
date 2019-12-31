@@ -177,19 +177,15 @@ impl Player {
 
     pub fn create_turn_player_system() -> Box<dyn Schedulable> {
         SystemBuilder::new("turn_player")
+            .read_component::<DefaultTileId>()
+            .write_component::<DefaultTileId>()
+            .write_component::<CurrentTileId>()
             .with_query(
-                <(
-                    Read<MoveDirectionStack>,
-                    Read<Arc<Tileset>>,
-                    Write<DefaultTileId>,
-                    Write<CurrentTileId>,
-                )>::query()
-                .filter(changed::<MoveDirectionStack>()),
+                <(Read<MoveDirectionStack>, Read<Arc<Tileset>>)>::query()
+                    .filter(changed::<MoveDirectionStack>()),
             )
             .build(move |_commands, world, _resources, query| {
-                for (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id) in
-                    query.iter(&mut *world)
-                {
+                for (entity, (move_direction_stack, tileset)) in query.iter_entities(&mut *world) {
                     let tile_id = move_direction_stack
                         .0
                         .last()
@@ -202,8 +198,10 @@ impl Player {
                         .and_then(|face_direction| face_direction.get_tile_id(&*tileset));
 
                     if let Some(tile_id) = tile_id {
-                        default_tile_id.0 = tile_id;
-                        current_tile_id.0 = tile_id;
+                        if tile_id != world.get_component::<DefaultTileId>(entity).unwrap().0 {
+                            world.get_component_mut::<DefaultTileId>(entity).unwrap().0 = tile_id;
+                            world.get_component_mut::<CurrentTileId>(entity).unwrap().0 = tile_id;
+                        }
                     }
                 }
             })
