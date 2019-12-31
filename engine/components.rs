@@ -30,6 +30,13 @@ pub struct ScreenPosition {
 }
 
 impl ScreenPosition {
+    pub fn translate(&mut self, x: f64, y: f64) {
+        self.x += x;
+        self.y += y;
+    }
+}
+
+impl ScreenPosition {
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }

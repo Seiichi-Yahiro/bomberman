@@ -207,6 +207,26 @@ impl Player {
             })
     }
 
+    pub fn create_move_player_system() -> Box<dyn Schedulable> {
+        SystemBuilder::new("move_player")
+            .write_component::<ScreenPosition>()
+            .with_query(<Read<MoveDirectionStack>>::query())
+            .build(move |_commands, world, _resources, query| {
+                for (entity, (move_direction_stack)) in query.iter_entities(&mut *world) {
+                    if let Some(move_direction) = move_direction_stack.0.last() {
+                        let mut screen_position =
+                            world.get_component_mut::<ScreenPosition>(entity).unwrap();
+                        match move_direction {
+                            MoveDirection::Up => screen_position.translate(0.0, -1.0),
+                            MoveDirection::Down => screen_position.translate(0.0, 1.0),
+                            MoveDirection::Left => screen_position.translate(-1.0, 0.0),
+                            MoveDirection::Right => screen_position.translate(1.0, 0.0),
+                        }
+                    }
+                }
+            })
+    }
+
     pub fn update(world: &mut World, asset_storage: &AssetStorage, dt: f64) {}
 }
 

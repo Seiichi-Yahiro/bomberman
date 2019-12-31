@@ -66,6 +66,7 @@ impl PlayState {
                     players: vec![player1, player2],
                     schedule: Schedule::builder()
                         .add_system(Player::create_turn_player_system())
+                        .add_system(Player::create_move_player_system())
                         .build(),
                 };
 
