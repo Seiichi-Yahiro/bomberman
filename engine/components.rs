@@ -4,7 +4,6 @@ use legion::prelude::*;
 use legion::schedule::Schedulable;
 use legion::system::SystemBuilder;
 use legion::world::World;
-use piston::input::{Button, ButtonState};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -122,9 +121,3 @@ impl AnimationType {
             })
     }
 }
-
-pub type Command = Box<dyn Fn(&mut World) + Send + Sync>;
-pub type CommandFactory = Box<dyn Fn(ButtonState) -> Command + Send + Sync>;
-pub type ControlsMap = HashMap<Button, CommandFactory>;
-
-pub struct Controls(pub ControlsMap);

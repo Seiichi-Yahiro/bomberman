@@ -1,8 +1,7 @@
 use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
 use engine::components::{
-    AnimationType, Command, Controls, ControlsMap, CurrentTileId, DefaultTileId, Layer,
-    MapPosition, ScreenPosition,
+    AnimationType, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition,
 };
 use engine::game_state::input::{ButtonEvent, ButtonState};
 use engine::game_state::{
@@ -16,6 +15,9 @@ use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MoveDirectionStack(pub Vec<MoveDirection>);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Controls(pub HashMap<Button, PlayerCommand>);
 
 pub struct Player {}
 
@@ -60,59 +62,43 @@ impl Player {
     }
 
     fn create_player_controls(player_id: PlayerId) -> Controls {
-        let mut controls: ControlsMap = HashMap::new();
+        let mut controls = HashMap::new();
 
         match player_id {
             PlayerId::Player1 => {
                 controls.insert(
                     Button::Keyboard(Key::Left),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Left, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Left),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Right),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Right, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Right),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Up),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Up, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Up),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Down),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Down, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Down),
                 );
             }
             PlayerId::Player2 => {
                 controls.insert(
                     Button::Keyboard(Key::A),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Left, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Left),
                 );
                 controls.insert(
                     Button::Keyboard(Key::D),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Right, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Right),
                 );
                 controls.insert(
                     Button::Keyboard(Key::W),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Up, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Up),
                 );
                 controls.insert(
                     Button::Keyboard(Key::S),
-                    Box::new(move |button_state: ButtonState| {
-                        Self::create_move_command(player_id, MoveDirection::Down, button_state)
-                    }),
+                    PlayerCommand::Movement(MoveDirection::Down),
                 );
             }
             PlayerId::Player3 => {}
@@ -122,57 +108,67 @@ impl Player {
         Controls(controls)
     }
 
-    fn create_move_command(
-        player_id: PlayerId,
-        move_direction: MoveDirection,
-        button_state: ButtonState,
-    ) -> Command {
-        let command = move |world: &mut World| {
-            Self::store_move_direction(world, player_id, move_direction, button_state);
-        };
-
-        Box::new(command)
-    }
-
     pub fn handle_event(world: &mut World, event: &Event) {
-        let mut commands: Vec<Command> = vec![];
+        let mut systems: Vec<Box<dyn Schedulable>> = vec![];
         let query = <Read<Controls>>::query();
 
-        for controls in query.iter(world) {
+        for (entity, controls) in query.iter_entities(world) {
             if let Some(button_args) = event.button_args() {
-                if let Some(command_factory) = controls.0.get(&button_args.button) {
-                    commands.push(command_factory(button_args.state));
+                if let Some(action) = controls.0.get(&button_args.button) {
+                    match action {
+                        PlayerCommand::Movement(move_direction) => {
+                            let system = Self::create_store_move_direction_system(
+                                entity,
+                                *move_direction,
+                                button_args.state,
+                            );
+                            systems.push(system);
+                        }
+                    }
                 }
             };
         }
 
-        commands.into_iter().for_each(|command| {
-            command(world);
-        });
+        if systems.is_empty() {
+            return;
+        }
+
+        systems
+            .into_iter()
+            .fold(Schedule::builder(), |builder, system| {
+                builder.add_system(system)
+            })
+            .build()
+            .execute(world);
     }
 
-    fn store_move_direction(
-        world: &mut World,
-        player_id: PlayerId,
+    fn create_store_move_direction_system(
+        entity: Entity,
         move_direction: MoveDirection,
         button_state: ButtonState,
-    ) {
-        let query = <Write<MoveDirectionStack>>::query().filter(tag_value(&player_id));
+    ) -> Box<dyn Schedulable> {
+        SystemBuilder::new("store_move_direction")
+            .write_component::<MoveDirectionStack>()
+            .build(move |_commands, world, _resources, _query| {
+                let move_direction_stack = &mut world
+                    .get_component_mut::<MoveDirectionStack>(entity)
+                    .unwrap()
+                    .0;
 
-        for mut move_direction_stack in query.iter(world) {
-            match button_state {
-                ButtonState::Press => {
-                    move_direction_stack.0.push(move_direction);
+                match button_state {
+                    ButtonState::Press => {
+                        move_direction_stack.push(move_direction);
+                    }
+                    ButtonState::Release => {
+                        move_direction_stack
+                            .iter()
+                            .position(|stored_move_direction| {
+                                *stored_move_direction == move_direction
+                            })
+                            .map(|index| move_direction_stack.remove(index));
+                    }
                 }
-                ButtonState::Release => {
-                    move_direction_stack
-                        .0
-                        .iter()
-                        .position(|stored_move_direction| *stored_move_direction == move_direction)
-                        .map(|index| move_direction_stack.0.remove(index));
-                }
-            }
-        }
+            })
     }
 
     pub fn create_turn_player_system() -> Box<dyn Schedulable> {
@@ -207,12 +203,13 @@ impl Player {
             })
     }
 
+    // TODO set MapPosition
     pub fn create_move_player_system() -> Box<dyn Schedulable> {
         SystemBuilder::new("move_player")
             .write_component::<ScreenPosition>()
             .with_query(<Read<MoveDirectionStack>>::query())
             .build(move |_commands, world, _resources, query| {
-                for (entity, (move_direction_stack)) in query.iter_entities(&mut *world) {
+                for (entity, move_direction_stack) in query.iter_entities(&mut *world) {
                     if let Some(move_direction) = move_direction_stack.0.last() {
                         let mut screen_position =
                             world.get_component_mut::<ScreenPosition>(entity).unwrap();
@@ -281,7 +278,7 @@ impl PlayerFaceDirection {
             .properties
             .iter()
             .find(
-                |(tile_id, properties)| match properties.get("face_direction") {
+                |(_tile_id, properties)| match properties.get("face_direction") {
                     Some(PropertyValue::StringValue(face_direction)) => {
                         self.as_str() == face_direction.as_str()
                     }
@@ -323,7 +320,7 @@ impl From<&PlayerFaceDirection> for &str {
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
-pub enum PlayerAction {
+pub enum PlayerCommand {
     Movement(MoveDirection),
 }
 
