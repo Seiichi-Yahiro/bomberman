@@ -12,6 +12,8 @@ pub struct Tilemap {
     pub tileset: Arc<Tileset>,
     pub width: u32,
     pub height: u32,
+    pub tile_width: u32,
+    pub tile_height: u32,
 }
 
 impl Tilemap {
@@ -107,6 +109,8 @@ impl Asset for Tilemap {
         Tilemap {
             width: tilemap.width,
             height: tilemap.height,
+            tile_width: tilemap.tile_width,
+            tile_height: tilemap.tile_height,
             tiles: Self::convert_tilemap_to_tiles(&tilemap),
             object_groups: Self::extract_object_groups_from_tilemap(&tilemap),
             tileset: Arc::new(tileset),

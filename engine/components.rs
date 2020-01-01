@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DeltaTime(pub f64);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MapPosition {
     pub x: u32,
     pub y: u32,
@@ -19,6 +19,29 @@ pub struct MapPosition {
 impl MapPosition {
     pub fn new(x: u32, y: u32) -> Self {
         Self { x, y }
+    }
+
+    pub fn create_update_map_position_system(
+        tile_width: u32,
+        tile_height: u32,
+    ) -> Box<dyn Schedulable> {
+        SystemBuilder::new("update_map_position")
+            .read_component::<MapPosition>()
+            .write_component::<MapPosition>()
+            .with_query(
+                <Read<ScreenPosition>>::query()
+                    .filter(changed::<ScreenPosition>() & component::<MapPosition>()),
+            )
+            .build(move |_commands, world, _resources, query| {
+                for (entity, screen_position) in query.iter_entities(&mut *world) {
+                    let map_x = (screen_position.x as u32 / tile_width) * tile_width;
+                    let map_y = (screen_position.y as u32 / tile_height) * tile_height;
+                    let map_position = MapPosition::new(map_x, map_y);
+                    if *world.get_component::<MapPosition>(entity).unwrap() != map_position {
+                        *world.get_component_mut::<MapPosition>(entity).unwrap() = map_position;
+                    }
+                }
+            })
     }
 }
 

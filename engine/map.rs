@@ -21,7 +21,7 @@ pub struct Map {
     pub tilemap: Arc<Tilemap>,
     pub tile_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
     pub world: RefCell<World>,
-    animation_schedule: Schedule,
+    schedule: Schedule,
 }
 
 impl Map {
@@ -46,11 +46,15 @@ impl Map {
         let tile_animations = Arc::new(RwLock::new(tile_animations));
 
         Map {
-            animation_schedule: Schedule::builder()
+            schedule: Schedule::builder()
                 .add_system(AnimationType::create_exchange_animation_system())
                 .add_system(AnimationType::create_update_animation_system(Arc::clone(
                     &tile_animations,
                 )))
+                .add_system(MapPosition::create_update_map_position_system(
+                    tilemap.tile_width,
+                    tilemap.tile_height,
+                ))
                 .build(),
             tilemap,
             tile_animations,
@@ -90,8 +94,7 @@ impl Map {
 impl Updatable for Map {
     fn update(&mut self, state_context: &mut StateContext, dt: f64) {
         self.world.borrow_mut().resources.insert(DeltaTime(dt));
-        self.animation_schedule
-            .execute(&mut *self.world.borrow_mut());
+        self.schedule.execute(&mut *self.world.borrow_mut());
     }
 }
 

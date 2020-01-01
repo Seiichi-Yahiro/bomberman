@@ -177,8 +177,11 @@ impl Player {
             .write_component::<DefaultTileId>()
             .write_component::<CurrentTileId>()
             .with_query(
-                <(Read<MoveDirectionStack>, Read<Arc<Tileset>>)>::query()
-                    .filter(changed::<MoveDirectionStack>()),
+                <(Read<MoveDirectionStack>, Read<Arc<Tileset>>)>::query().filter(
+                    changed::<MoveDirectionStack>()
+                        & component::<DefaultTileId>()
+                        & component::<CurrentTileId>(),
+                ),
             )
             .build(move |_commands, world, _resources, query| {
                 for (entity, (move_direction_stack, tileset)) in query.iter_entities(&mut *world) {
@@ -203,11 +206,10 @@ impl Player {
             })
     }
 
-    // TODO set MapPosition
     pub fn create_move_player_system() -> Box<dyn Schedulable> {
         SystemBuilder::new("move_player")
             .write_component::<ScreenPosition>()
-            .with_query(<Read<MoveDirectionStack>>::query())
+            .with_query(<Read<MoveDirectionStack>>::query().filter(component::<ScreenPosition>()))
             .build(move |_commands, world, _resources, query| {
                 for (entity, move_direction_stack) in query.iter_entities(&mut *world) {
                     if let Some(move_direction) = move_direction_stack.0.last() {
