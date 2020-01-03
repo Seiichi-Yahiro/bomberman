@@ -1,82 +1,95 @@
-use crate::arenas::object_groups::{
-    ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
-};
-use crate::players::{Player, PlayerId};
-use engine::asset::{Object, PropertyValue, TilePosition, Tilemap, Tileset};
-use engine::components::{CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition};
-use engine::game_state::input::*;
-use engine::game_state::*;
-use engine::legion::prelude::*;
-use engine::map::Map;
-use itertools::Itertools;
-use std::collections::HashMap;
+mod components;
+mod map;
+mod object_groups;
+mod systems;
+
+use crate::game_states::game_state_builder::{GameStateBuilder, GameStateBuilderBuilder};
+use crate::game_states::play_state::map::Map;
+use crate::game_states::play_state::systems::*;
+use crate::game_states::state_manager::GameState;
+use crate::tiles::tilemap::Tilemap;
+use legion::schedule::Schedule;
+use legion::world::World;
+use piston::input::Event;
 use std::sync::Arc;
 
 const TILEMAP_ID: &str = "ashlands";
 
 pub struct PlayState {
-    map: Map,
-    soft_block_entities: Vec<Entity>,
-    players: Vec<Entity>,
+    world: World,
     schedule: Schedule,
+    map: Map,
+    //soft_block_entities: Vec<Entity>,
+    //players: Vec<Entity>,
 }
 
 impl PlayState {
     pub fn build() -> GameStateBuilder {
         GameStateBuilderBuilder::new()
             .load_asset::<Tilemap>("assets/textures/arena_tiles/ashlands.tmx", TILEMAP_ID)
-            .load_asset::<Tileset>(
+            /*.load_asset::<Tileset>(
                 "assets/textures/player/player1.xml",
                 PlayerId::Player1.as_str(),
             )
             .load_asset::<Tileset>(
                 "assets/textures/player/player2.xml",
                 PlayerId::Player2.as_str(),
-            )
-            .build(|data| {
-                let tilemap = data
+            )*/
+            .build(|resources| {
+                let tilemap = resources
                     .asset_storage
-                    .read()
+                    .lock()
                     .unwrap()
                     .get_asset::<Tilemap>(TILEMAP_ID);
-                let mut world = data.universe.create_world();
-                world.resources.insert(Arc::clone(&data.asset_storage));
+                let mut world = resources.universe.create_world();
+                world.resources.insert(Arc::clone(&resources.asset_storage));
 
-                let player_spawns = Self::get_player_spawns(&tilemap);
+                let map = Map::new(tilemap.clone());
+                map.create_tilemap_entities(&mut world);
+
+                /*let player_spawns = Self::get_player_spawns(&tilemap);
 
                 let player1 = Player::create_player(
                     PlayerId::Player1,
                     &player_spawns,
-                    &data.asset_storage.read().unwrap(),
+                    &resources.asset_storage.read().unwrap(),
                     &mut world,
                 );
                 let player2 = Player::create_player(
                     PlayerId::Player2,
                     &player_spawns,
-                    &data.asset_storage.read().unwrap(),
+                    &resources.asset_storage.read().unwrap(),
                     &mut world,
                 );
 
-                let map = Map::new(Arc::clone(&tilemap), world);
-                map.create_tilemap_entities();
+                */
 
                 let mut play_state = PlayState {
-                    map,
-                    soft_block_entities: vec![],
-                    players: vec![player1, player2],
+                    //map,
+                    //soft_block_entities: vec![],
+                    //players: vec![player1, player2],
+                    world,
                     schedule: Schedule::builder()
-                        .add_system(Player::create_turn_player_system())
-                        .add_system(Player::create_move_player_system())
+                        //.add_system(Player::create_turn_player_system())
+                        //.add_system(Player::create_move_player_system())
+                        //.add_system(create_update_map_position_system(tilemap.tile_width, tilemap.tile_height, ))
+                        //.add_system(create_exchange_animation_system())
+                        .add_system(create_update_animation_system(map.tile_animations.clone()))
+                        .add_thread_local_fn(create_draw_system_fn(
+                            resources.gl.clone(),
+                            tilemap.tiles.len(),
+                        ))
                         .build(),
+                    map,
                 };
 
-                play_state.create_soft_blocks();
+                //play_state.create_soft_blocks();
 
                 Box::new(play_state)
             })
     }
 
-    fn create_soft_blocks(&mut self) {
+    /*fn create_soft_blocks(&mut self) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
             soft_block
                 .properties
@@ -156,34 +169,13 @@ impl PlayState {
                     })
             })
             .collect()
-    }
+    }*/
 }
 
 impl GameState for PlayState {
-    fn handle_event(&mut self, state_context: &mut StateContext<'_, '_>, event: &Event) -> bool {
-        if let Some(Button::Keyboard(Key::Escape)) = event.press_args() {
-            (state_context.request_state_transition)(StateTransition::Clear);
-            return false;
-        }
-
-        Player::handle_event(&mut *self.map.world.borrow_mut(), event);
-
+    fn execute(&mut self, event: Event) -> bool {
+        self.world.resources.insert(event);
+        self.schedule.execute(&mut self.world);
         true
-    }
-
-    fn update(&mut self, state_context: &mut StateContext<'_, '_>, dt: f64) -> bool {
-        Player::update(
-            &mut *self.map.world.borrow_mut(),
-            &state_context.data.asset_storage.read().unwrap(),
-            dt,
-        );
-        self.schedule.execute(&mut self.map.world.borrow_mut());
-        self.map.update(state_context, dt);
-
-        true
-    }
-
-    fn draw(&self, data: &AppData, transform: Matrix2d, g: &mut GlGraphics) {
-        self.map.draw(data, transform, g);
     }
 }

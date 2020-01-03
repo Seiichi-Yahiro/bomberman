@@ -1,4 +1,4 @@
-use crate::tileset::TileId;
+use crate::tiles::tileset::TileId;
 use std::collections::HashMap;
 use std::sync::Arc;
 

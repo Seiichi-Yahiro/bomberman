@@ -1,4 +1,4 @@
-use crate::tileset::TileId;
+use crate::tiles::tileset::TileId;
 use graphics::types::SourceRectangle;
 use graphics::ImageSize;
 use opengl_graphics::{Texture, TextureSettings};

@@ -1,5 +1,5 @@
-use crate::asset_storage::Asset;
-use crate::tileset::{TileId, TilePosition, Tileset};
+use crate::tiles::tileset::{TileId, TilePosition, Tileset};
+use crate::utils::asset_storage::Asset;
 use crate::utils::flatten_2d;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;

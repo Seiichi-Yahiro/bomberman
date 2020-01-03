@@ -1,6 +1,6 @@
-use crate::animation::{Animation, Frame};
-use crate::asset_storage::Asset;
-use crate::texture_holder::TextureHolder;
+use crate::tiles::animation::{Animation, Frame};
+use crate::tiles::texture_holder::TextureHolder;
+use crate::utils::asset_storage::Asset;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;

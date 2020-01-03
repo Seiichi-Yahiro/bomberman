@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use crate::texture_holder::TextureData;
+use crate::tiles::texture_holder::TextureData;
 use graphics::math::{Matrix2d, Scalar, Vec2d};
 use graphics::types::SourceRectangle;
 use graphics::{self, Graphics, ImageSize};

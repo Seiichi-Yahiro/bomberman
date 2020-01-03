@@ -1,3 +1,4 @@
+/*
 use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
 use engine::components::{
@@ -12,12 +13,6 @@ use engine::legion::prelude::*;
 use engine::legion::{entity::Entity, world::World};
 use std::collections::HashMap;
 use std::sync::Arc;
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct MoveDirectionStack(pub Vec<MoveDirection>);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Controls(pub HashMap<Button, PlayerCommand>);
 
 pub struct Player {}
 
@@ -228,6 +223,7 @@ impl Player {
 
     pub fn update(world: &mut World, asset_storage: &AssetStorage, dt: f64) {}
 }
+*/
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PlayerId {
@@ -274,7 +270,7 @@ pub enum PlayerFaceDirection {
     Right,
 }
 
-impl PlayerFaceDirection {
+/*impl PlayerFaceDirection {
     pub fn get_tile_id(&self, tileset: &Tileset) -> Option<TileId> {
         tileset
             .properties
@@ -293,7 +289,7 @@ impl PlayerFaceDirection {
     pub fn as_str(&self) -> &str {
         self.into()
     }
-}
+}*/
 
 impl From<&str> for PlayerFaceDirection {
     fn from(face_direction: &str) -> Self {
