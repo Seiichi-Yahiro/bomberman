@@ -1,15 +1,20 @@
 use crate::game_states::play_state::components::*;
+use crate::game_states::play_state::object_groups::{ArenaObjectGroup, SoftBlockAreasProperties};
 use crate::tiles::animation::Animation;
 use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::TileId;
 use itertools::Itertools;
+use legion::entity::Entity;
 use legion::world::World;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tiled::{Object, PropertyValue};
 
 pub struct Map {
     pub tilemap: Arc<Tilemap>,
     pub tile_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
+    pub tilemap_entities: Vec<Entity>,
+    pub soft_block_entities: Vec<Entity>,
 }
 
 impl Map {
@@ -17,6 +22,8 @@ impl Map {
         Map {
             tile_animations: Arc::new(RwLock::new(Self::create_shared_tile_animations(&tilemap))),
             tilemap,
+            tilemap_entities: vec![],
+            soft_block_entities: vec![],
         }
     }
 
@@ -39,12 +46,13 @@ impl Map {
             .collect()
     }
 
-    pub fn create_tilemap_entities(&self, world: &mut World) {
-        self.tilemap
+    pub fn create_tilemap_entities(&mut self, world: &mut World) {
+        self.tilemap_entities = self
+            .tilemap
             .tiles
             .iter()
             .enumerate()
-            .for_each(|(layer_index, layer)| {
+            .flat_map(|(layer_index, layer)| {
                 let components = layer
                     .iter()
                     .map(|(&[x, y], tile_id)| {
@@ -61,7 +69,70 @@ impl Map {
                     })
                     .collect_vec();
 
-                world.insert((Layer(layer_index),), components);
-            });
+                world
+                    .insert((Layer(layer_index),), components)
+                    .iter()
+                    .map(|entity| entity.clone())
+                    .collect_vec()
+            })
+            .collect_vec();
+    }
+
+    pub fn create_soft_blocks(&mut self, world: &mut World) {
+        let should_spawn_soft_block = |soft_block: &&Object| -> bool {
+            soft_block
+                .properties
+                .get(SoftBlockAreasProperties::SpawnChance.as_str())
+                .map(|property_value| match property_value {
+                    PropertyValue::FloatValue(spawn_chance) => {
+                        rand::random::<f32>() <= *spawn_chance
+                    }
+                    _ => false,
+                })
+                .unwrap_or(false)
+        };
+
+        let create_components_grouped_by_layer = |object: &Object| match object
+            .properties
+            .get(SoftBlockAreasProperties::RenderLayer.as_str())
+        {
+            Some(PropertyValue::IntValue(layer_id)) => {
+                let x = object.x.abs();
+                let y = object.y.abs();
+
+                let components = (
+                    MapPosition::new(x as u32, y as u32),
+                    ScreenPosition::new(x as f64, y as f64),
+                    DefaultTileId(object.gid),
+                    CurrentTileId(object.gid),
+                    Arc::clone(&self.tilemap.tileset),
+                );
+
+                Some((*layer_id, components))
+            }
+            _ => None,
+        };
+
+        self.soft_block_entities = self
+            .tilemap
+            .object_groups
+            .get(ArenaObjectGroup::SoftBlockAreas.as_str())
+            .iter()
+            .flat_map(|objects| objects.iter())
+            .filter(should_spawn_soft_block)
+            .filter_map(create_components_grouped_by_layer)
+            .into_group_map()
+            .into_iter()
+            .map(|(layer_id, components)| {
+                let tags = (Layer(layer_id.abs() as usize),);
+
+                world
+                    .insert(tags, components)
+                    .iter()
+                    .map(|entity| entity.clone())
+                    .collect_vec()
+            })
+            .flatten()
+            .collect_vec();
     }
 }

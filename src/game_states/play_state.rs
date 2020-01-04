@@ -43,8 +43,9 @@ impl PlayState {
                     .get_asset::<Tilemap>(TILEMAP_ID);
 
                 let mut world = resources.universe.create_world();
-                let map = Map::new(tilemap.clone());
+                let mut map = Map::new(tilemap.clone());
                 map.create_tilemap_entities(&mut world);
+                map.create_soft_blocks(&mut world);
 
                 /*let player_spawns = Self::get_player_spawns(&tilemap);
 
@@ -88,66 +89,7 @@ impl PlayState {
             })
     }
 
-    /*fn create_soft_blocks(&mut self) {
-        let should_spawn_soft_block = |soft_block: &&Object| -> bool {
-            soft_block
-                .properties
-                .get(SoftBlockAreasProperties::SpawnChance.as_str())
-                .map(|property_value| match property_value {
-                    PropertyValue::FloatValue(spawn_chance) => {
-                        rand::random::<f32>() <= *spawn_chance
-                    }
-                    _ => false,
-                })
-                .unwrap_or(false)
-        };
-
-        let create_components_grouped_by_layer = |object: &Object| match object
-            .properties
-            .get(SoftBlockAreasProperties::RenderLayer.as_str())
-        {
-            Some(PropertyValue::IntValue(layer_id)) => {
-                let x = object.x.abs();
-                let y = object.y.abs();
-
-                let components = (
-                    MapPosition::new(x as u32, y as u32),
-                    ScreenPosition::new(x as f64, y as f64),
-                    DefaultTileId(object.gid),
-                    CurrentTileId(object.gid),
-                    Arc::clone(&self.map.tilemap.tileset),
-                );
-
-                Some((*layer_id, components))
-            }
-            _ => None,
-        };
-
-        self.soft_block_entities = self
-            .map
-            .tilemap
-            .object_groups
-            .get(ArenaObjectGroup::SoftBlockAreas.as_str())
-            .iter()
-            .flat_map(|objects| objects.iter())
-            .filter(should_spawn_soft_block)
-            .filter_map(create_components_grouped_by_layer)
-            .into_group_map()
-            .into_iter()
-            .map(|(layer_id, components)| {
-                let tags = (Layer(layer_id.abs() as usize),);
-
-                self.map
-                    .world
-                    .borrow_mut()
-                    .insert(tags, components)
-                    .iter()
-                    .map(|entity| entity.clone())
-                    .collect_vec()
-            })
-            .flatten()
-            .collect_vec();
-    }
+    /*
 
     fn get_player_spawns(tilemap: &Tilemap) -> HashMap<PlayerId, TilePosition> {
         tilemap
