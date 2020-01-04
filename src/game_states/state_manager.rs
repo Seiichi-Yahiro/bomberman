@@ -8,7 +8,7 @@ use piston::input::{Button, ButtonEvent, ButtonState, Event, RenderEvent};
 use std::cell::RefCell;
 use std::collections::{HashSet, VecDeque};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 pub trait GameState {
     fn execute(&mut self, event: Event) -> bool;
@@ -24,9 +24,9 @@ pub enum StateTransition {
 pub struct Resources {
     pub gl: Rc<RefCell<GlGraphics>>,
     pub universe: Arc<Universe>,
-    pub pending_transitions: Arc<Mutex<VecDeque<StateTransition>>>,
-    pub asset_storage: Arc<Mutex<AssetStorage>>,
-    pub button_storage: Arc<Mutex<HashSet<Button>>>,
+    pub pending_transitions: Arc<RwLock<VecDeque<StateTransition>>>,
+    pub asset_storage: Arc<RwLock<AssetStorage>>,
+    pub button_storage: Arc<RwLock<HashSet<Button>>>,
 }
 
 pub struct StateManager {
@@ -41,11 +41,11 @@ impl StateManager {
             resources: Resources {
                 gl: Rc::new(RefCell::new(GlGraphics::new(opengl_version))),
                 universe: Arc::new(Universe::new()),
-                pending_transitions: Arc::new(Mutex::new(VecDeque::from(vec![
+                pending_transitions: Arc::new(RwLock::new(VecDeque::from(vec![
                     StateTransition::Push(game_state_builder),
                 ]))),
-                asset_storage: Arc::new(Mutex::new(AssetStorage::new())),
-                button_storage: Arc::new(Mutex::new(HashSet::new())),
+                asset_storage: Arc::new(RwLock::new(AssetStorage::new())),
+                button_storage: Arc::new(RwLock::new(HashSet::new())),
             },
         };
         state_manager.apply_pending_transitions();
@@ -57,7 +57,7 @@ impl StateManager {
     }
 
     fn apply_pending_transitions(&mut self) {
-        let mut pending_transitions = self.resources.pending_transitions.lock().unwrap();
+        let ref mut pending_transitions = *self.resources.pending_transitions.write().unwrap();
 
         while let Some(transition) = pending_transitions.pop_front() {
             match transition {
@@ -102,13 +102,13 @@ impl StateManager {
                     if !self
                         .resources
                         .button_storage
-                        .lock()
+                        .read()
                         .unwrap()
                         .contains(&button_args.button)
                     {
                         self.resources
                             .button_storage
-                            .lock()
+                            .write()
                             .unwrap()
                             .insert(button_args.button);
                         self.update(event);
@@ -117,7 +117,7 @@ impl StateManager {
                 ButtonState::Release => {
                     self.resources
                         .button_storage
-                        .lock()
+                        .write()
                         .unwrap()
                         .remove(&button_args.button);
                     self.update(event);

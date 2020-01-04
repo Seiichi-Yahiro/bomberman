@@ -38,12 +38,11 @@ impl PlayState {
             .build(|resources| {
                 let tilemap = resources
                     .asset_storage
-                    .lock()
+                    .read()
                     .unwrap()
                     .get_asset::<Tilemap>(TILEMAP_ID);
-                let mut world = resources.universe.create_world();
-                world.resources.insert(Arc::clone(&resources.asset_storage));
 
+                let mut world = resources.universe.create_world();
                 let map = Map::new(tilemap.clone());
                 map.create_tilemap_entities(&mut world);
 

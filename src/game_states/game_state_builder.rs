@@ -37,7 +37,7 @@ impl GameStateBuilderBuilder {
     ) -> GameStateBuilder {
         let builder = move |resources: &Resources| {
             self.asset_loaders.into_iter().for_each(|load| {
-                load(&mut *resources.asset_storage.lock().unwrap());
+                load(&mut *resources.asset_storage.write().unwrap());
             });
 
             f(resources)
