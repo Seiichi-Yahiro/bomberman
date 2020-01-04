@@ -1,4 +1,4 @@
-use crate::game_states::play_state::players::{MoveDirection, PlayerCommand};
+use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerId};
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use piston::input::Button;
@@ -46,7 +46,7 @@ pub struct CurrentTileId(pub TileId);
 pub struct DefaultTileId(pub TileId);
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct MoveDirectionStack(pub Vec<MoveDirection>);
+pub struct MoveDirectionStack(pub Vec<Direction>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Controls(pub HashMap<Button, PlayerCommand>);
@@ -56,3 +56,11 @@ pub enum AnimationType {
     Shared(Option<Arc<RwLock<Animation>>>),
     Ownd(Option<Animation>),
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Player(pub PlayerId);
+
+pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TurnCommand(pub Direction);

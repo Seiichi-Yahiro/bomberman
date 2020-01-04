@@ -1,4 +1,4 @@
-use crate::game_states::play_state::components::*;
+use crate::game_states::play_state::components;
 use crate::game_states::play_state::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
@@ -60,12 +60,12 @@ impl Map {
                     .iter()
                     .map(|(&[x, y], tile_id)| {
                         (
-                            MapPosition::new(x, y),
-                            ScreenPosition::new(x as f64, y as f64),
-                            DefaultTileId(*tile_id),
-                            CurrentTileId(*tile_id),
-                            Arc::clone(&self.tilemap.tileset),
-                            AnimationType::Shared(
+                            components::MapPosition::new(x, y),
+                            components::ScreenPosition::new(x as f64, y as f64),
+                            components::DefaultTileId(*tile_id),
+                            components::CurrentTileId(*tile_id),
+                            components::Tileset(self.tilemap.tileset.clone()),
+                            components::AnimationType::Shared(
                                 self.tile_animations.read().unwrap().get(tile_id).cloned(),
                             ),
                         )
@@ -73,7 +73,7 @@ impl Map {
                     .collect_vec();
 
                 world
-                    .insert((Layer(layer_index),), components)
+                    .insert((components::Layer(layer_index),), components)
                     .iter()
                     .map(|entity| entity.clone())
                     .collect_vec()
@@ -104,11 +104,11 @@ impl Map {
                 let y = object.y.abs();
 
                 let components = (
-                    MapPosition::new(x as u32, y as u32),
-                    ScreenPosition::new(x as f64, y as f64),
-                    DefaultTileId(object.gid),
-                    CurrentTileId(object.gid),
-                    Arc::clone(&self.tilemap.tileset),
+                    components::MapPosition::new(x as u32, y as u32),
+                    components::ScreenPosition::new(x as f64, y as f64),
+                    components::DefaultTileId(object.gid),
+                    components::CurrentTileId(object.gid),
+                    components::Tileset(self.tilemap.tileset.clone()),
                 );
 
                 Some((*layer_id, components))
@@ -127,7 +127,7 @@ impl Map {
             .into_group_map()
             .into_iter()
             .map(|(layer_id, components)| {
-                let tags = (Layer(layer_id.abs() as usize),);
+                let tags = (components::Layer(layer_id.abs() as usize),);
 
                 world
                     .insert(tags, components)

@@ -1,9 +1,10 @@
-use crate::game_states::play_state::components::*;
+use crate::game_states::play_state::components;
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::asset_storage::AssetStorage;
 use legion::entity::Entity;
 use legion::world::World;
+use piston::input::{Button, Key};
 use std::collections::HashMap;
 use tiled::PropertyValue;
 
@@ -29,16 +30,16 @@ impl Players {
 
         let player = world
             .insert(
-                (Layer(1), id),
+                (components::Layer(1), components::Player(id)),
                 vec![(
-                    MapPosition::new(x, y),
-                    ScreenPosition::new(x as f64, y as f64),
-                    DefaultTileId(tile_id),
-                    CurrentTileId(tile_id),
-                    tileset.clone(),
-                    //Self::create_player_controls(id),
-                    MoveDirectionStack(vec![]),
-                    AnimationType::Ownd(
+                    components::MapPosition::new(x, y),
+                    components::ScreenPosition::new(x as f64, y as f64),
+                    components::DefaultTileId(tile_id),
+                    components::CurrentTileId(tile_id),
+                    components::Tileset(tileset.clone()),
+                    Self::create_player_controls(id),
+                    components::MoveDirectionStack(vec![]),
+                    components::AnimationType::Ownd(
                         tileset
                             .animation_frames_holder
                             .get(&tile_id)
@@ -57,75 +58,63 @@ impl Players {
 
         self.players.push(player);
     }
-}
 
-/*
-use engine::animation::Animation;
-use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
-use engine::components::{
-    AnimationType, CurrentTileId, DefaultTileId, Layer, MapPosition, ScreenPosition,
-};
-use engine::game_state::input::{ButtonEvent, ButtonState};
-use engine::game_state::{
-    input::{Button, Key},
-    Event,
-};
-use engine::legion::prelude::*;
-use engine::legion::{entity::Entity, world::World};
-use std::collections::HashMap;
-use std::sync::Arc;
-
-pub struct Player {}
-
-impl Player {
-
-
-    fn create_player_controls(player_id: PlayerId) -> Controls {
+    fn create_player_controls(player_id: PlayerId) -> components::Controls {
         let mut controls = HashMap::new();
 
         match player_id {
             PlayerId::Player1 => {
                 controls.insert(
                     Button::Keyboard(Key::Left),
-                    PlayerCommand::Movement(MoveDirection::Left),
+                    PlayerCommand::Movement(Direction::Left),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Right),
-                    PlayerCommand::Movement(MoveDirection::Right),
+                    PlayerCommand::Movement(Direction::Right),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Up),
-                    PlayerCommand::Movement(MoveDirection::Up),
+                    PlayerCommand::Movement(Direction::Up),
                 );
                 controls.insert(
                     Button::Keyboard(Key::Down),
-                    PlayerCommand::Movement(MoveDirection::Down),
+                    PlayerCommand::Movement(Direction::Down),
                 );
             }
             PlayerId::Player2 => {
                 controls.insert(
                     Button::Keyboard(Key::A),
-                    PlayerCommand::Movement(MoveDirection::Left),
+                    PlayerCommand::Movement(Direction::Left),
                 );
                 controls.insert(
                     Button::Keyboard(Key::D),
-                    PlayerCommand::Movement(MoveDirection::Right),
+                    PlayerCommand::Movement(Direction::Right),
                 );
                 controls.insert(
                     Button::Keyboard(Key::W),
-                    PlayerCommand::Movement(MoveDirection::Up),
+                    PlayerCommand::Movement(Direction::Up),
                 );
                 controls.insert(
                     Button::Keyboard(Key::S),
-                    PlayerCommand::Movement(MoveDirection::Down),
+                    PlayerCommand::Movement(Direction::Down),
                 );
             }
             PlayerId::Player3 => {}
             PlayerId::Player4 => {}
         }
 
-        Controls(controls)
+        components::Controls(controls)
     }
+}
+
+/*
+
+
+
+impl Player {
+
+
+
 
     pub fn handle_event(world: &mut World, event: &Event) {
         let mut systems: Vec<Box<dyn Schedulable>> = vec![];
@@ -244,8 +233,6 @@ impl Player {
                 }
             })
     }
-
-    pub fn update(world: &mut World, asset_storage: &AssetStorage, dt: f64) {}
 }
 */
 
@@ -330,6 +317,17 @@ impl From<&str> for PlayerFaceDirection {
     }
 }
 
+impl From<Direction> for PlayerFaceDirection {
+    fn from(direction: Direction) -> Self {
+        match direction {
+            Direction::Up => PlayerFaceDirection::Up,
+            Direction::Down => PlayerFaceDirection::Down,
+            Direction::Left => PlayerFaceDirection::Left,
+            Direction::Right => PlayerFaceDirection::Right,
+        }
+    }
+}
+
 impl From<&PlayerFaceDirection> for &str {
     fn from(player_face_direction: &PlayerFaceDirection) -> Self {
         match player_face_direction {
@@ -343,11 +341,11 @@ impl From<&PlayerFaceDirection> for &str {
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PlayerCommand {
-    Movement(MoveDirection),
+    Movement(Direction),
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
-pub enum MoveDirection {
+pub enum Direction {
     Up,
     Down,
     Left,
