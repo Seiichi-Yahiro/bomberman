@@ -35,7 +35,7 @@ pub fn create_draw_system_fn(
                         if let Some(sprite) = &mut sprite {
                             sprite.update_texture_data(texture_data);
                         } else {
-                            sprite = Some(Sprite::from_texture_data(texture_data.clone()));
+                            sprite = Some(Sprite::from_texture_data(texture_data));
                         }
 
                         sprite
