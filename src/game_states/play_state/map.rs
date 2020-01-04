@@ -1,8 +1,11 @@
 use crate::game_states::play_state::components::*;
-use crate::game_states::play_state::object_groups::{ArenaObjectGroup, SoftBlockAreasProperties};
+use crate::game_states::play_state::object_groups::{
+    ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
+};
+use crate::game_states::play_state::players::PlayerId;
 use crate::tiles::animation::Animation;
 use crate::tiles::tilemap::Tilemap;
-use crate::tiles::tileset::TileId;
+use crate::tiles::tileset::{TileId, TilePosition};
 use itertools::Itertools;
 use legion::entity::Entity;
 use legion::world::World;
@@ -134,5 +137,26 @@ impl Map {
             })
             .flatten()
             .collect_vec();
+    }
+
+    pub fn get_player_spawns(&self) -> HashMap<PlayerId, TilePosition> {
+        self.tilemap
+            .object_groups
+            .get(ArenaObjectGroup::PlayerSpawns.as_str())
+            .iter()
+            .flat_map(|objects| objects.iter())
+            .filter_map(|object| {
+                object
+                    .properties
+                    .get(PlayerSpawnsProperties::PlayerId.as_str())
+                    .and_then(|property_value| match property_value {
+                        PropertyValue::IntValue(player_id) => Some((
+                            PlayerId::from(player_id.abs() as u32),
+                            [object.x.abs() as u32, object.y.abs() as u32],
+                        )),
+                        _ => None,
+                    })
+            })
+            .collect()
     }
 }

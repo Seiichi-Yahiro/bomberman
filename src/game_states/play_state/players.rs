@@ -1,3 +1,64 @@
+use crate::game_states::play_state::components::*;
+use crate::tiles::animation::Animation;
+use crate::tiles::tileset::{TileId, TilePosition, Tileset};
+use crate::utils::asset_storage::AssetStorage;
+use legion::entity::Entity;
+use legion::world::World;
+use std::collections::HashMap;
+use tiled::PropertyValue;
+
+pub struct Players {
+    pub players: Vec<Entity>,
+}
+
+impl Players {
+    pub fn new() -> Players {
+        Players { players: vec![] }
+    }
+
+    pub fn create_player(
+        &mut self,
+        id: PlayerId,
+        player_spawns: &HashMap<PlayerId, TilePosition>,
+        asset_storage: &AssetStorage,
+        world: &mut World,
+    ) {
+        let [x, y] = *player_spawns.get(&id).unwrap();
+        let tileset = asset_storage.get_asset::<Tileset>(id.as_str());
+        let tile_id = PlayerFaceDirection::Down.get_tile_id(&tileset).unwrap();
+
+        let player = world
+            .insert(
+                (Layer(1), id),
+                vec![(
+                    MapPosition::new(x, y),
+                    ScreenPosition::new(x as f64, y as f64),
+                    DefaultTileId(tile_id),
+                    CurrentTileId(tile_id),
+                    tileset.clone(),
+                    //Self::create_player_controls(id),
+                    MoveDirectionStack(vec![]),
+                    AnimationType::Ownd(
+                        tileset
+                            .animation_frames_holder
+                            .get(&tile_id)
+                            .cloned()
+                            .map(|frames| {
+                                let mut animation = Animation::new(frames);
+                                animation.play();
+                                animation
+                            }),
+                    ),
+                )],
+            )
+            .first()
+            .copied()
+            .unwrap();
+
+        self.players.push(player);
+    }
+}
+
 /*
 use engine::animation::Animation;
 use engine::asset::{AssetStorage, PropertyValue, TileId, Tileset};
@@ -17,44 +78,7 @@ use std::sync::Arc;
 pub struct Player {}
 
 impl Player {
-    pub fn create_player(
-        id: PlayerId,
-        player_spawns: &HashMap<PlayerId, [u32; 2]>,
-        asset_storage: &AssetStorage,
-        world: &mut World,
-    ) -> Entity {
-        let [x, y] = player_spawns.get(&id).unwrap();
-        let tileset = asset_storage.get_asset::<Tileset>(id.as_str());
-        let tile_id = PlayerFaceDirection::Down.get_tile_id(&tileset).unwrap();
 
-        world
-            .insert(
-                (Layer(1), id),
-                vec![(
-                    MapPosition::new(*x, *y),
-                    ScreenPosition::new(*x as f64, *y as f64),
-                    DefaultTileId(tile_id),
-                    CurrentTileId(tile_id),
-                    Arc::clone(&tileset),
-                    Self::create_player_controls(id),
-                    MoveDirectionStack(vec![]),
-                    AnimationType::Ownd(
-                        tileset
-                            .animation_frames_holder
-                            .get(&tile_id)
-                            .cloned()
-                            .map(|frames| {
-                                let mut animation = Animation::new(frames);
-                                animation.play();
-                                animation
-                            }),
-                    ),
-                )],
-            )
-            .first()
-            .copied()
-            .unwrap()
-    }
 
     fn create_player_controls(player_id: PlayerId) -> Controls {
         let mut controls = HashMap::new();
@@ -270,7 +294,7 @@ pub enum PlayerFaceDirection {
     Right,
 }
 
-/*impl PlayerFaceDirection {
+impl PlayerFaceDirection {
     pub fn get_tile_id(&self, tileset: &Tileset) -> Option<TileId> {
         tileset
             .properties
@@ -289,7 +313,7 @@ pub enum PlayerFaceDirection {
     pub fn as_str(&self) -> &str {
         self.into()
     }
-}*/
+}
 
 impl From<&str> for PlayerFaceDirection {
     fn from(face_direction: &str) -> Self {

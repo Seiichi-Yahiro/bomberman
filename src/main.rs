@@ -1,5 +1,4 @@
 mod game_states;
-mod players;
 mod tiles;
 mod utils;
 

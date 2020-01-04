@@ -1,4 +1,4 @@
-use crate::players::{MoveDirection, PlayerCommand};
+use crate::game_states::play_state::players::{MoveDirection, PlayerCommand};
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use piston::input::Button;
