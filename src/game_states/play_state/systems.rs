@@ -1,5 +1,5 @@
 use crate::game_states::play_state::components::*;
-use crate::game_states::play_state::players::{PlayerCommand, PlayerFaceDirection};
+use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerFaceDirection};
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use crate::utils::sprite::Sprite;
@@ -146,15 +146,26 @@ pub fn create_update_animation_system(
 pub fn create_controls_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("controls_system")
         .read_resource::<Event>()
-        .with_query(<Read<Controls>>::query())
+        .with_query(<(Read<Controls>, Write<MoveDirectionStack>)>::query())
         .build(move |commands, world, event, query| {
             if let Some(button_args) = event.button_args() {
-                for (entity, controls) in query.iter_entities_immutable(&*world) {
+                for (entity, (controls, mut move_direction_stack)) in
+                    query.iter_entities(&mut *world)
+                {
                     if let Some(action) = controls.0.get(&button_args.button) {
-                        match (action, button_args.state) {
-                            (PlayerCommand::Movement(direction), ButtonState::Press) => {
-                                commands.add_component(entity, TurnCommand(*direction));
-                            }
+                        match action {
+                            PlayerCommand::Movement(direction) => match button_args.state {
+                                ButtonState::Press => {
+                                    move_direction_stack.0.push(*direction);
+                                }
+                                ButtonState::Release => {
+                                    move_direction_stack
+                                        .0
+                                        .iter()
+                                        .position(|stored_direction| stored_direction == direction)
+                                        .map(|index| move_direction_stack.0.remove(index));
+                                }
+                            },
                             _ => {}
                         }
                     }
@@ -166,28 +177,55 @@ pub fn create_controls_system() -> Box<dyn Schedulable> {
 pub fn create_turn_player_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("turn_player_system")
         .read_resource::<Event>()
-        .with_query(
-            <(
-                Read<TurnCommand>,
-                Read<Tileset>,
-                Write<DefaultTileId>,
-                Write<CurrentTileId>,
-            )>::query()
-            .filter(tag::<Player>()),
-        )
+        .with_query(<(
+            Read<MoveDirectionStack>,
+            Read<Tileset>,
+            Write<DefaultTileId>,
+            Write<CurrentTileId>,
+        )>::query())
         .build(move |commands, world, event, query| {
             if let Some(_update_args) = event.update_args() {
-                for (entity, (turn_command, tileset, mut default_tile_id, mut current_tile_id)) in
+                for (
+                    entity,
+                    (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
+                ) in query.iter_entities(&mut *world)
+                {
+                    if let Some(move_direction) = move_direction_stack.0.last() {
+                        let tile_id = PlayerFaceDirection::from(*move_direction)
+                            .get_tile_id(&tileset.0)
+                            .unwrap();
+
+                        default_tile_id.0 = tile_id;
+                        current_tile_id.0 = tile_id;
+                    }
+                }
+            }
+        })
+}
+
+pub fn create_move_player_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("move_player_system")
+        .read_resource::<Event>()
+        .with_query(<(
+            Read<MoveDirectionStack>,
+            Read<Speed>,
+            Write<ScreenPosition>,
+        )>::query())
+        .build(move |commands, world, event, query| {
+            if let Some(update_args) = event.update_args() {
+                for (entity, (move_direction_stack, speed, mut screen_position)) in
                     query.iter_entities(&mut *world)
                 {
-                    let tile_id = PlayerFaceDirection::from(turn_command.0)
-                        .get_tile_id(&tileset.0)
-                        .unwrap();
+                    if let Some(move_direction) = move_direction_stack.0.last() {
+                        let move_speed = 0.25 * speed.0;
 
-                    default_tile_id.0 = tile_id;
-                    current_tile_id.0 = tile_id;
-
-                    commands.remove_component::<TurnCommand>(entity);
+                        *screen_position = match move_direction {
+                            Direction::Up => screen_position.translate(0.0, -move_speed),
+                            Direction::Down => screen_position.translate(0.0, move_speed),
+                            Direction::Left => screen_position.translate(-move_speed, 0.0),
+                            Direction::Right => screen_position.translate(move_speed, 0.0),
+                        }
+                    }
                 }
             }
         })

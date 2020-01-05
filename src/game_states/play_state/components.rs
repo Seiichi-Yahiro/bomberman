@@ -24,9 +24,11 @@ pub struct ScreenPosition {
 }
 
 impl ScreenPosition {
-    pub fn translate(&mut self, x: f64, y: f64) {
-        self.x += x;
-        self.y += y;
+    pub fn translate(&self, x: f64, y: f64) -> Self {
+        Self {
+            x: self.x + x,
+            y: self.y + y,
+        }
     }
 }
 
@@ -60,7 +62,7 @@ pub enum AnimationType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Player(pub PlayerId);
 
-pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Speed(pub f64);
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct TurnCommand(pub Direction);
+pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);

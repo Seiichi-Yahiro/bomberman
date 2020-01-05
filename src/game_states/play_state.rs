@@ -73,6 +73,7 @@ impl PlayState {
                         //.add_system(create_exchange_animation_system())
                         .add_system(create_controls_system())
                         .add_system(create_turn_player_system())
+                        .add_system(create_move_player_system())
                         //.add_system(create_update_animation_system(map.tile_animations.clone()))
                         .add_thread_local_fn(create_draw_system_fn(
                             resources.gl.clone(),

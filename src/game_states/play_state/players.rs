@@ -32,14 +32,14 @@ impl Players {
             .insert(
                 (components::Layer(1), components::Player(id)),
                 vec![(
-                    components::MapPosition::new(x, y),
                     components::ScreenPosition::new(x as f64, y as f64),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),
-                    Self::create_player_controls(id),
+                    components::Speed(1.0),
                     components::MoveDirectionStack(vec![]),
-                    components::AnimationType::Ownd(
+                    Self::create_player_controls(id),
+                    /*components::AnimationType::Ownd(
                         tileset
                             .animation_frames_holder
                             .get(&tile_id)
@@ -49,7 +49,7 @@ impl Players {
                                 animation.play();
                                 animation
                             }),
-                    ),
+                    ),*/
                 )],
             )
             .first()
@@ -106,135 +106,6 @@ impl Players {
         components::Controls(controls)
     }
 }
-
-/*
-
-
-
-impl Player {
-
-
-
-
-    pub fn handle_event(world: &mut World, event: &Event) {
-        let mut systems: Vec<Box<dyn Schedulable>> = vec![];
-        let query = <Read<Controls>>::query();
-
-        for (entity, controls) in query.iter_entities(world) {
-            if let Some(button_args) = event.button_args() {
-                if let Some(action) = controls.0.get(&button_args.button) {
-                    match action {
-                        PlayerCommand::Movement(move_direction) => {
-                            let system = Self::create_store_move_direction_system(
-                                entity,
-                                *move_direction,
-                                button_args.state,
-                            );
-                            systems.push(system);
-                        }
-                    }
-                }
-            };
-        }
-
-        if systems.is_empty() {
-            return;
-        }
-
-        systems
-            .into_iter()
-            .fold(Schedule::builder(), |builder, system| {
-                builder.add_system(system)
-            })
-            .build()
-            .execute(world);
-    }
-
-    fn create_store_move_direction_system(
-        entity: Entity,
-        move_direction: MoveDirection,
-        button_state: ButtonState,
-    ) -> Box<dyn Schedulable> {
-        SystemBuilder::new("store_move_direction")
-            .write_component::<MoveDirectionStack>()
-            .build(move |_commands, world, _resources, _query| {
-                let move_direction_stack = &mut world
-                    .get_component_mut::<MoveDirectionStack>(entity)
-                    .unwrap()
-                    .0;
-
-                match button_state {
-                    ButtonState::Press => {
-                        move_direction_stack.push(move_direction);
-                    }
-                    ButtonState::Release => {
-                        move_direction_stack
-                            .iter()
-                            .position(|stored_move_direction| {
-                                *stored_move_direction == move_direction
-                            })
-                            .map(|index| move_direction_stack.remove(index));
-                    }
-                }
-            })
-    }
-
-    pub fn create_turn_player_system() -> Box<dyn Schedulable> {
-        SystemBuilder::new("turn_player")
-            .read_component::<DefaultTileId>()
-            .write_component::<DefaultTileId>()
-            .write_component::<CurrentTileId>()
-            .with_query(
-                <(Read<MoveDirectionStack>, Read<Arc<Tileset>>)>::query().filter(
-                    changed::<MoveDirectionStack>()
-                        & component::<DefaultTileId>()
-                        & component::<CurrentTileId>(),
-                ),
-            )
-            .build(move |_commands, world, _resources, query| {
-                for (entity, (move_direction_stack, tileset)) in query.iter_entities(&mut *world) {
-                    let tile_id = move_direction_stack
-                        .0
-                        .last()
-                        .map(|move_direction| match move_direction {
-                            MoveDirection::Up => PlayerFaceDirection::Up,
-                            MoveDirection::Down => PlayerFaceDirection::Down,
-                            MoveDirection::Left => PlayerFaceDirection::Left,
-                            MoveDirection::Right => PlayerFaceDirection::Right,
-                        })
-                        .and_then(|face_direction| face_direction.get_tile_id(&*tileset));
-
-                    if let Some(tile_id) = tile_id {
-                        if tile_id != world.get_component::<DefaultTileId>(entity).unwrap().0 {
-                            world.get_component_mut::<DefaultTileId>(entity).unwrap().0 = tile_id;
-                            world.get_component_mut::<CurrentTileId>(entity).unwrap().0 = tile_id;
-                        }
-                    }
-                }
-            })
-    }
-
-    pub fn create_move_player_system() -> Box<dyn Schedulable> {
-        SystemBuilder::new("move_player")
-            .write_component::<ScreenPosition>()
-            .with_query(<Read<MoveDirectionStack>>::query().filter(component::<ScreenPosition>()))
-            .build(move |_commands, world, _resources, query| {
-                for (entity, move_direction_stack) in query.iter_entities(&mut *world) {
-                    if let Some(move_direction) = move_direction_stack.0.last() {
-                        let mut screen_position =
-                            world.get_component_mut::<ScreenPosition>(entity).unwrap();
-                        match move_direction {
-                            MoveDirection::Up => screen_position.translate(0.0, -1.0),
-                            MoveDirection::Down => screen_position.translate(0.0, 1.0),
-                            MoveDirection::Left => screen_position.translate(-1.0, 0.0),
-                            MoveDirection::Right => screen_position.translate(1.0, 0.0),
-                        }
-                    }
-                }
-            })
-    }
-}
-*/
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PlayerId {
