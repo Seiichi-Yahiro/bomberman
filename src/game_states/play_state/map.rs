@@ -41,8 +41,10 @@ impl Map {
                     .get(tile_id)
                     .cloned()?;
 
-                let mut animation = Animation::new(frames);
-                animation.play();
+                let animation = Animation::builder(frames)
+                    .paused(false)
+                    .looping(true)
+                    .build();
 
                 Some((*tile_id, Arc::new(RwLock::new(animation))))
             })
@@ -56,26 +58,34 @@ impl Map {
             .iter()
             .enumerate()
             .flat_map(|(layer_index, layer)| {
-                let components = layer
+                layer
                     .iter()
                     .map(|(&[x, y], tile_id)| {
-                        (
-                            components::MapPosition::new(x, y),
-                            components::ScreenPosition::new(x as f64, y as f64),
-                            components::DefaultTileId(*tile_id),
-                            components::CurrentTileId(*tile_id),
-                            components::Tileset(self.tilemap.tileset.clone()),
-                            components::AnimationType::Shared(
-                                self.tile_animations.read().unwrap().get(tile_id).cloned(),
-                            ),
-                        )
-                    })
-                    .collect_vec();
+                        let entity = world
+                            .insert(
+                                (components::Layer(layer_index),),
+                                vec![(
+                                    components::ScreenPosition::new(x as f64, y as f64),
+                                    components::DefaultTileId(*tile_id),
+                                    components::CurrentTileId(*tile_id),
+                                    components::Tileset(self.tilemap.tileset.clone()),
+                                )],
+                            )
+                            .first()
+                            .unwrap()
+                            .clone();
 
-                world
-                    .insert((components::Layer(layer_index),), components)
-                    .iter()
-                    .map(|entity| entity.clone())
+                        if let Some(animation) =
+                            self.tile_animations.read().unwrap().get(tile_id).cloned()
+                        {
+                            world.add_component(
+                                entity,
+                                components::AnimationType::Shared(animation),
+                            );
+                        }
+
+                        entity
+                    })
                     .collect_vec()
             })
             .collect_vec();
@@ -104,7 +114,6 @@ impl Map {
                 let y = object.y.abs();
 
                 let components = (
-                    components::MapPosition::new(x as u32, y as u32),
                     components::ScreenPosition::new(x as f64, y as f64),
                     components::DefaultTileId(object.gid),
                     components::CurrentTileId(object.gid),

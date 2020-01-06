@@ -5,18 +5,6 @@ use piston::input::Button;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MapPosition {
-    pub x: u32,
-    pub y: u32,
-}
-
-impl MapPosition {
-    pub fn new(x: u32, y: u32) -> Self {
-        Self { x, y }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScreenPosition {
     pub x: f64,
@@ -55,8 +43,8 @@ pub struct Controls(pub HashMap<Button, PlayerCommand>);
 
 #[derive(Clone, Debug)]
 pub enum AnimationType {
-    Shared(Option<Arc<RwLock<Animation>>>),
-    Ownd(Option<Animation>),
+    Shared(Arc<RwLock<Animation>>),
+    Ownd(Animation),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

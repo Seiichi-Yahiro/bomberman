@@ -51,39 +51,17 @@ pub fn create_draw_system_fn(
     }
 }
 
-/*pub fn create_update_map_position_system(
-    tile_width: u32,
-    tile_height: u32,
-) -> Box<dyn Schedulable> {
-    SystemBuilder::new("update_map_position_system")
-        .read_resource::<Event>()
-        .read_component::<MapPosition>()
-        .write_component::<MapPosition>()
-        .with_query(
-            <Read<ScreenPosition>>::query()
-                .filter(changed::<ScreenPosition>() & component::<MapPosition>()),
-        )
-        .build(move |_commands, world, event, query| {
-            if let Some(_update_args) = event.update_args() {
-                for (entity, screen_position) in query.iter_entities(&mut *world) {
-                    let map_x = (screen_position.x as u32 / tile_width) * tile_width;
-                    let map_y = (screen_position.y as u32 / tile_height) * tile_height;
-                    let map_position = MapPosition::new(map_x, map_y);
-                    if *world.get_component::<MapPosition>(entity).unwrap() != map_position {
-                        *world.get_component_mut::<MapPosition>(entity).unwrap() = map_position;
-                    }
-                }
-            }
-        })
-}*/
-
-pub fn create_update_animation_system(
+pub fn create_animation_system(
     shared_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
 ) -> Box<dyn Schedulable> {
-    SystemBuilder::new("update_animation_system")
+    SystemBuilder::new("animation_system")
         .read_resource::<Event>()
-        .with_query(<(Write<AnimationType>, Write<CurrentTileId>)>::query())
-        .build(move |_commands, world, event, query| {
+        .with_query(<(
+            Write<AnimationType>,
+            Write<CurrentTileId>,
+            Read<DefaultTileId>,
+        )>::query())
+        .build(move |commands, world, event, query| {
             if let Some(update_args) = event.update_args() {
                 shared_animations
                     .read()
@@ -93,65 +71,41 @@ pub fn create_update_animation_system(
                         animation.write().unwrap().update(update_args.dt);
                     });
 
-                query.par_for_each(&mut *world, |(mut animation_type, mut current_tile_id)| {
+                for (entity, (mut animation_type, mut current_tile_id, default_tile_id)) in
+                    query.iter_entities(&mut *world)
+                {
                     match &mut *animation_type {
-                        AnimationType::Shared(Some(animation)) => {
-                            current_tile_id.0 = animation.read().unwrap().get_current_tile_id();
+                        AnimationType::Shared(animation) => {
+                            if animation.read().unwrap().is_finished() {
+                                commands.remove_component::<AnimationType>(entity);
+                                current_tile_id.0 = default_tile_id.0;
+                            } else {
+                                current_tile_id.0 = animation.read().unwrap().get_current_tile_id();
+                            }
                         }
-                        AnimationType::Ownd(Some(animation)) => {
+                        AnimationType::Ownd(animation) => {
                             animation.update(update_args.dt);
-                            current_tile_id.0 = animation.get_current_tile_id();
+
+                            if animation.is_finished() {
+                                commands.remove_component::<AnimationType>(entity);
+                                current_tile_id.0 = default_tile_id.0;
+                            } else {
+                                current_tile_id.0 = animation.get_current_tile_id();
+                            }
                         }
-                        _ => {}
                     };
-                });
+                }
             }
         })
 }
-
-/*pub fn create_exchange_animation_system() -> Box<dyn Schedulable> {
-    SystemBuilder::new("set_animation_system")
-        .read_resource::<Event>()
-        .with_query(
-            <(Read<Tileset>, Read<DefaultTileId>, Write<AnimationType>)>::query()
-                .filter(changed::<DefaultTileId>()),
-        )
-        .build(move |_commands, world, event, query| {
-            if let Some(_update_args) = event.update_args() {
-                query.par_for_each(
-                    &mut *world,
-                    |(tileset, default_tile_id, mut animation_type)| {
-                        let mut animation = tileset
-                            .0
-                            .animation_frames_holder
-                            .get(&default_tile_id.0)
-                            .cloned()
-                            .map(|frames| Animation::new(frames));
-
-                        if let Some(animation) = &mut animation {
-                            if let AnimationType::Ownd(Some(old_animation)) = &*animation_type {
-                                if !old_animation.is_paused() && !old_animation.is_stopped() {
-                                    animation.play();
-                                }
-                            }
-                        }
-
-                        *animation_type = AnimationType::Ownd(animation);
-                    },
-                );
-            }
-        })
-}*/
 
 pub fn create_controls_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("controls_system")
         .read_resource::<Event>()
         .with_query(<(Read<Controls>, Write<MoveDirectionStack>)>::query())
-        .build(move |commands, world, event, query| {
+        .build(move |_commands, world, event, query| {
             if let Some(button_args) = event.button_args() {
-                for (entity, (controls, mut move_direction_stack)) in
-                    query.iter_entities(&mut *world)
-                {
+                for (controls, mut move_direction_stack) in query.iter(&mut *world) {
                     if let Some(action) = controls.0.get(&button_args.button) {
                         match action {
                             PlayerCommand::Movement(direction) => match button_args.state {
@@ -166,7 +120,6 @@ pub fn create_controls_system() -> Box<dyn Schedulable> {
                                         .map(|index| move_direction_stack.0.remove(index));
                                 }
                             },
-                            _ => {}
                         }
                     }
                 }
@@ -184,7 +137,7 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
             Write<CurrentTileId>,
         )>::query())
         .build(move |commands, world, event, query| {
-            if let Some(_update_args) = event.update_args() {
+            if let Some(_button_args) = event.button_args() {
                 for (
                     entity,
                     (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
@@ -195,8 +148,16 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
                             .get_tile_id(&tileset.0)
                             .unwrap();
 
-                        default_tile_id.0 = tile_id;
-                        current_tile_id.0 = tile_id;
+                        if default_tile_id.0 != tile_id {
+                            default_tile_id.0 = tile_id;
+                            current_tile_id.0 = tile_id;
+
+                            if let Some(frames) = tileset.0.animation_frames_holder.get(&tile_id) {
+                                let animation =
+                                    Animation::builder(frames.clone()).looping(true).build();
+                                commands.add_component(entity, AnimationType::Ownd(animation));
+                            }
+                        }
                     }
                 }
             }
@@ -211,11 +172,9 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
             Read<Speed>,
             Write<ScreenPosition>,
         )>::query())
-        .build(move |commands, world, event, query| {
-            if let Some(update_args) = event.update_args() {
-                for (entity, (move_direction_stack, speed, mut screen_position)) in
-                    query.iter_entities(&mut *world)
-                {
+        .build(move |_commands, world, event, query| {
+            if let Some(_update_args) = event.update_args() {
+                for (move_direction_stack, speed, mut screen_position) in query.iter(&mut *world) {
                     if let Some(move_direction) = move_direction_stack.0.last() {
                         let move_speed = 0.25 * speed.0;
 

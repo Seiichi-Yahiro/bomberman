@@ -67,14 +67,10 @@ impl PlayState {
                 let play_state = PlayState {
                     world,
                     schedule: Schedule::builder()
-                        //.add_system(Player::create_turn_player_system())
-                        //.add_system(Player::create_move_player_system())
-                        //.add_system(create_update_map_position_system(tilemap.tile_width, tilemap.tile_height, ))
-                        //.add_system(create_exchange_animation_system())
                         .add_system(create_controls_system())
                         .add_system(create_turn_player_system())
                         .add_system(create_move_player_system())
-                        //.add_system(create_update_animation_system(map.tile_animations.clone()))
+                        .add_system(create_animation_system(map.tile_animations.clone()))
                         .add_thread_local_fn(create_draw_system_fn(
                             resources.gl.clone(),
                             tilemap.tiles.len(),

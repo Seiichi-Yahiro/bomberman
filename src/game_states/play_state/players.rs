@@ -39,17 +39,19 @@ impl Players {
                     components::Speed(1.0),
                     components::MoveDirectionStack(vec![]),
                     Self::create_player_controls(id),
-                    /*components::AnimationType::Ownd(
+                    components::AnimationType::Ownd(
                         tileset
                             .animation_frames_holder
                             .get(&tile_id)
                             .cloned()
                             .map(|frames| {
-                                let mut animation = Animation::new(frames);
-                                animation.play();
-                                animation
-                            }),
-                    ),*/
+                                Animation::builder(frames)
+                                    .looping(true)
+                                    .paused(false)
+                                    .build()
+                            })
+                            .unwrap(),
+                    ),
                 )],
             )
             .first()

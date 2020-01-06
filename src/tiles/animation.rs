@@ -2,30 +2,25 @@ use crate::tiles::tileset::TileId;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Frame {
     pub tile_id: u32,
     pub duration: u32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Animation {
-    is_stopped: bool,
     is_paused: bool,
+    is_finished: bool,
+    should_loop: bool,
     current_frame: usize,
     frame_time: f64,
     frames: Arc<Vec<Frame>>,
 }
 
 impl Animation {
-    pub fn new(frames: Arc<Vec<Frame>>) -> Animation {
-        Animation {
-            is_stopped: true,
-            is_paused: false,
-            current_frame: 0,
-            frame_time: 0.0,
-            frames,
-        }
+    pub fn builder(frames: Arc<Vec<Frame>>) -> AnimationBuilder {
+        AnimationBuilder::new(frames)
     }
 
     pub fn get_current_tile_id(&self) -> TileId {
@@ -34,30 +29,22 @@ impl Animation {
 
     pub fn play(&mut self) {
         self.is_paused = false;
-        self.is_stopped = false;
     }
 
     pub fn pause(&mut self) {
         self.is_paused = true;
     }
 
-    pub fn stop(&mut self) {
-        self.is_stopped = true;
-        self.is_paused = false;
-        self.current_frame = 0;
-        self.frame_time = 0.0;
+    pub fn is_playing(&self) -> bool {
+        !self.is_paused && !self.is_finished
     }
 
-    pub fn is_paused(&self) -> bool {
-        self.is_paused
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.is_stopped
+    pub fn is_finished(&self) -> bool {
+        self.is_finished
     }
 
     pub fn update(&mut self, dt: f64) {
-        if self.is_paused || self.is_stopped {
+        if self.is_paused || self.is_finished {
             return;
         }
 
@@ -66,7 +53,16 @@ impl Animation {
 
         if self.frame_time >= frame_duration {
             self.frame_time -= frame_duration;
-            self.current_frame = (self.current_frame + 1) % self.frames.len();
+
+            self.current_frame += 1;
+
+            if self.current_frame == self.frames.len() {
+                if self.should_loop {
+                    self.current_frame %= self.frames.len();
+                } else {
+                    self.is_finished = true;
+                }
+            }
         }
     }
 
@@ -106,10 +102,47 @@ impl Animation {
     }
 }
 
+pub struct AnimationBuilder {
+    frames: Arc<Vec<Frame>>,
+    should_loop: bool,
+    is_paused: bool,
+}
+
+impl AnimationBuilder {
+    pub fn new(frames: Arc<Vec<Frame>>) -> Self {
+        Self {
+            frames,
+            should_loop: false,
+            is_paused: false,
+        }
+    }
+
+    pub fn looping(mut self, looping: bool) -> Self {
+        self.should_loop = looping;
+        self
+    }
+
+    pub fn paused(mut self, paused: bool) -> Self {
+        self.is_paused = paused;
+        self
+    }
+
+    pub fn build(self) -> Animation {
+        Animation {
+            is_paused: self.is_paused,
+            is_finished: false,
+            should_loop: self.should_loop,
+            current_frame: 0,
+            frame_time: 0.0,
+            frames: self.frames,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tileset::Tileset;
+    use crate::tiles::tileset::Tileset;
 
     #[test]
     fn test_animation_update() {
@@ -148,7 +181,9 @@ mod tests {
         };
 
         let mut animation =
-            Animation::new(Arc::clone(&tileset.animation_frames_holder[&(2 + gid)]));
+            Animation::builder(Arc::clone(&tileset.animation_frames_holder[&(2 + gid)]))
+                .looping(true)
+                .build();
 
         let mut result = Vec::new();
 
