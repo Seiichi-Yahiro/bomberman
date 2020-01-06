@@ -12,42 +12,76 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-pub fn create_draw_system_fn(
+pub fn create_draw_system(
     gl: Rc<RefCell<GlGraphics>>,
     number_of_layers: usize,
-) -> impl FnMut(&mut World) + 'static {
-    move |world: &mut World| {
-        if let Some(render_args) = world.resources.get::<Event>().unwrap().render_args() {
-            let ref mut g = *gl.borrow_mut();
-            let c = g.draw_begin(render_args.viewport());
+) -> Box<dyn Runnable> {
+    SystemBuilder::new("draw_system")
+        .read_resource::<Event>()
+        .with_query(<(Read<ScreenPosition>, Read<CurrentTileId>, Read<Tileset>)>::query())
+        .build_thread_local(move |_commands, world, event, query| {
+            if let Some(render_args) = event.render_args() {
+                let ref mut g = *gl.borrow_mut();
+                let c = g.draw_begin(render_args.viewport());
 
-            let mut sprite: Option<Sprite<Texture>> = None;
+                let mut sprite: Option<Sprite<Texture>> = None;
 
-            for layer in 0..number_of_layers {
-                let layer = Layer(layer);
-                let query = <(Read<ScreenPosition>, Read<CurrentTileId>, Read<Tileset>)>::query()
-                    .filter(tag_value(&layer));
+                for layer in 0..number_of_layers {
+                    let layer = Layer(layer);
+                    let query = query.clone().filter(tag_value(&layer));
 
-                for (pos, tile_id, tileset) in query.iter_immutable(world) {
-                    let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
+                    for (pos, tile_id, tileset) in query.iter_immutable(&*world) {
+                        let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
 
-                    if let Some(texture_data) = texture_data {
-                        if let Some(sprite) = &mut sprite {
-                            sprite.update_texture_data(texture_data);
-                        } else {
-                            sprite = Some(Sprite::from_texture_data(texture_data));
+                        if let Some(texture_data) = texture_data {
+                            if let Some(sprite) = &mut sprite {
+                                sprite.update_texture_data(texture_data);
+                            } else {
+                                sprite = Some(Sprite::from_texture_data(texture_data));
+                            }
+
+                            let [x, y] = pos.0;
+
+                            sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
                         }
-
-                        let [x, y] = pos.0;
-
-                        sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
                     }
                 }
-            }
 
-            g.draw_end();
-        }
-    }
+                g.draw_end();
+            }
+        })
+}
+
+#[cfg(debug_assertions)]
+pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnable> {
+    SystemBuilder::new("draw_hit_box_system")
+        .read_resource::<Event>()
+        .with_query(<(Read<ScreenPosition>, Read<HitBox>)>::query())
+        .build_thread_local(move |_commands, world, event, query| {
+            if let Some(render_args) = event.render_args() {
+                let ref mut g = *gl.borrow_mut();
+                let c = g.draw_begin(render_args.viewport());
+
+                let layer = Layer(1);
+                for (screen_position, hit_box) in query
+                    .clone()
+                    .filter(tag_value(&layer))
+                    .iter_immutable(&*world)
+                {
+                    let [x, y] = screen_position.0;
+                    let [w, h] = hit_box.0;
+
+                    let color = [0.0, 1.0, 0.0, 0.7];
+                    let radius = 0.5;
+                    graphics::line(color, radius, [x, y, x + w, y], c.transform, g);
+                    graphics::line(color, radius, [x + w, y, x + w, y + h], c.transform, g);
+                    graphics::line(color, radius, [x, y + h, x + w, y + h], c.transform, g);
+                    graphics::line(color, radius, [x, y, x, y + h], c.transform, g);
+                }
+
+                g.draw_end();
+            }
+        })
 }
 
 pub fn create_animation_system(
@@ -225,35 +259,40 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                             ]
                         };
 
-                        let collision = [[map_x, map_y], [map_x + 1, map_y], [map_x, map_y + 1]]
-                            .iter()
-                            .any(|&[map_x, map_y]| {
-                                let x_map_position = XMapPosition(map_x);
-                                let y_map_position = YMapPosition(map_y);
-                                let layer = Layer(1);
+                        let collision = [
+                            [map_x, map_y],
+                            [map_x + 1, map_y],
+                            [map_x, map_y + 1],
+                            [map_x + 1, map_y + 1],
+                        ]
+                        .iter()
+                        .any(|&[map_x, map_y]| {
+                            let x_map_position = XMapPosition(map_x);
+                            let y_map_position = YMapPosition(map_y);
+                            let layer = Layer(1);
 
-                                let [x, y] = screen_position.0;
-                                let [w, h] = hit_box.0;
+                            let [x, y] = screen_position.0;
+                            let [w, h] = hit_box.0;
 
-                                for (other_screen_position, other_hit_box) in compare_query
-                                    .clone()
-                                    .filter(
-                                        tag_value(&x_map_position)
-                                            & tag_value(&y_map_position)
-                                            & tag_value(&layer),
-                                    )
-                                    .iter_immutable(&*world)
-                                {
-                                    let [ox, oy] = other_screen_position.0;
-                                    let [ow, oh] = other_hit_box.0;
+                            for (other_screen_position, other_hit_box) in compare_query
+                                .clone()
+                                .filter(
+                                    tag_value(&x_map_position)
+                                        & tag_value(&y_map_position)
+                                        & tag_value(&layer),
+                                )
+                                .iter_immutable(&*world)
+                            {
+                                let [ox, oy] = other_screen_position.0;
+                                let [ow, oh] = other_hit_box.0;
 
-                                    if x < ox + ow && x + w > ox && y < oy + oh && y + h > oy {
-                                        return true;
-                                    }
+                                if x < ox + ow && x + w > ox && y < oy + oh && y + h > oy {
+                                    return true;
                                 }
+                            }
 
-                                false
-                            });
+                            false
+                        });
 
                         if collision {
                             screen_position.0 = previous_screen_position.0;
