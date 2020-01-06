@@ -1,5 +1,6 @@
 use crate::game_states::play_state::components;
 use crate::tiles::animation::Animation;
+use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::asset_storage::AssetStorage;
 use legion::entity::Entity;
@@ -22,6 +23,7 @@ impl Players {
         id: PlayerId,
         player_spawns: &HashMap<PlayerId, TilePosition>,
         asset_storage: &AssetStorage,
+        tilemap: &Tilemap,
         world: &mut World,
     ) {
         let [x, y] = *player_spawns.get(&id).unwrap();
@@ -32,7 +34,9 @@ impl Players {
             .insert(
                 (components::Layer(1), components::Player(id)),
                 vec![(
-                    components::ScreenPosition::new(x as f64, y as f64),
+                    components::ScreenPosition([x as f64, y as f64]),
+                    components::PreviousScreenPosition([x as f64, y as f64]),
+                    components::HitBox([tilemap.tile_width as f64, tilemap.tile_height as f64]),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),

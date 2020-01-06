@@ -63,9 +63,17 @@ impl Map {
                     .map(|(&[x, y], tile_id)| {
                         let entity = world
                             .insert(
-                                (components::Layer(layer_index),),
+                                (
+                                    components::Layer(layer_index),
+                                    components::XMapPosition(x / self.tilemap.tile_width),
+                                    components::YMapPosition(y / self.tilemap.tile_height),
+                                ),
                                 vec![(
-                                    components::ScreenPosition::new(x as f64, y as f64),
+                                    components::ScreenPosition([x as f64, y as f64]),
+                                    components::HitBox([
+                                        self.tilemap.tile_width as f64,
+                                        self.tilemap.tile_height as f64,
+                                    ]),
                                     components::DefaultTileId(*tile_id),
                                     components::CurrentTileId(*tile_id),
                                     components::Tileset(self.tilemap.tileset.clone()),
@@ -105,7 +113,7 @@ impl Map {
                 .unwrap_or(false)
         };
 
-        let create_components_grouped_by_layer = |object: &Object| match object
+        let create_entity = |object: &Object| match object
             .properties
             .get(SoftBlockAreasProperties::RenderLayer.as_str())
         {
@@ -113,14 +121,30 @@ impl Map {
                 let x = object.x.abs();
                 let y = object.y.abs();
 
+                let tags = (
+                    components::Layer(*layer_id as usize),
+                    components::XMapPosition(x as u32 / self.tilemap.tile_width),
+                    components::YMapPosition(y as u32 / self.tilemap.tile_height),
+                );
+
                 let components = (
-                    components::ScreenPosition::new(x as f64, y as f64),
+                    components::ScreenPosition([x as f64, y as f64]),
+                    components::HitBox([
+                        self.tilemap.tile_width as f64,
+                        self.tilemap.tile_height as f64,
+                    ]),
                     components::DefaultTileId(object.gid),
                     components::CurrentTileId(object.gid),
                     components::Tileset(self.tilemap.tileset.clone()),
                 );
 
-                Some((*layer_id, components))
+                Some(
+                    world
+                        .insert(tags, vec![components])
+                        .first()
+                        .unwrap()
+                        .clone(),
+                )
             }
             _ => None,
         };
@@ -132,19 +156,7 @@ impl Map {
             .iter()
             .flat_map(|objects| objects.iter())
             .filter(should_spawn_soft_block)
-            .filter_map(create_components_grouped_by_layer)
-            .into_group_map()
-            .into_iter()
-            .map(|(layer_id, components)| {
-                let tags = (components::Layer(layer_id.abs() as usize),);
-
-                world
-                    .insert(tags, components)
-                    .iter()
-                    .map(|entity| entity.clone())
-                    .collect_vec()
-            })
-            .flatten()
+            .filter_map(create_entity)
             .collect_vec();
     }
 

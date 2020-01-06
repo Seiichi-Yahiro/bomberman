@@ -38,10 +38,9 @@ pub fn create_draw_system_fn(
                             sprite = Some(Sprite::from_texture_data(texture_data));
                         }
 
-                        sprite
-                            .as_ref()
-                            .unwrap()
-                            .draw(c.transform.trans(pos.x, pos.y), g)
+                        let [x, y] = pos.0;
+
+                        sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
                     }
                 }
             }
@@ -171,21 +170,96 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
             Read<MoveDirectionStack>,
             Read<Speed>,
             Write<ScreenPosition>,
+            Write<PreviousScreenPosition>,
         )>::query())
         .build(move |_commands, world, event, query| {
             if let Some(_update_args) = event.update_args() {
-                for (move_direction_stack, speed, mut screen_position) in query.iter(&mut *world) {
+                for (
+                    move_direction_stack,
+                    speed,
+                    mut screen_position,
+                    mut previous_screen_position,
+                ) in query.iter(&mut *world)
+                {
                     if let Some(move_direction) = move_direction_stack.0.last() {
                         let move_speed = 0.25 * speed.0;
 
+                        previous_screen_position.0 = screen_position.0;
+
                         *screen_position = match move_direction {
-                            Direction::Up => screen_position.translate(0.0, -move_speed),
-                            Direction::Down => screen_position.translate(0.0, move_speed),
-                            Direction::Left => screen_position.translate(-move_speed, 0.0),
-                            Direction::Right => screen_position.translate(move_speed, 0.0),
+                            Direction::Up => screen_position.translate([0.0, -move_speed]),
+                            Direction::Down => screen_position.translate([0.0, move_speed]),
+                            Direction::Left => screen_position.translate([-move_speed, 0.0]),
+                            Direction::Right => screen_position.translate([move_speed, 0.0]),
                         }
                     }
                 }
             }
         })
+}
+
+pub fn create_collision_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("collision_system")
+        .read_resource::<Event>()
+        .read_resource::<Tilemap>()
+        .with_query(<(
+            Read<HitBox>,
+            Write<ScreenPosition>,
+            Write<PreviousScreenPosition>,
+        )>::query())
+        .with_query(
+            <(Read<ScreenPosition>, Read<HitBox>)>::query()
+                .filter(!component::<PreviousScreenPosition>()),
+        )
+        .build(
+            move |_commands, world, (event, tilemap), (query, compare_query)| {
+                if let Some(_update_args) = event.update_args() {
+                    for (hit_box, mut screen_position, mut previous_screen_position) in
+                        query.iter(&mut *world)
+                    {
+                        let [map_x, map_y] = {
+                            let [x, y] = screen_position.0;
+                            [
+                                x as u32 / tilemap.0.tile_width,
+                                y as u32 / tilemap.0.tile_height,
+                            ]
+                        };
+
+                        let collision = [[map_x, map_y], [map_x + 1, map_y], [map_x, map_y + 1]]
+                            .iter()
+                            .any(|&[map_x, map_y]| {
+                                let x_map_position = XMapPosition(map_x);
+                                let y_map_position = YMapPosition(map_y);
+                                let layer = Layer(1);
+
+                                let [x, y] = screen_position.0;
+                                let [w, h] = hit_box.0;
+
+                                for (other_screen_position, other_hit_box) in compare_query
+                                    .clone()
+                                    .filter(
+                                        tag_value(&x_map_position)
+                                            & tag_value(&y_map_position)
+                                            & tag_value(&layer),
+                                    )
+                                    .iter_immutable(&*world)
+                                {
+                                    let [ox, oy] = other_screen_position.0;
+                                    let [ow, oh] = other_hit_box.0;
+
+                                    if x < ox + ow && x + w > ox && y < oy + oh && y + h > oy {
+                                        return true;
+                                    }
+                                }
+
+                                false
+                            });
+
+                        if collision {
+                            screen_position.0 = previous_screen_position.0;
+                        }
+                    }
+                }
+            },
+        )
 }

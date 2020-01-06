@@ -5,15 +5,14 @@ mod players;
 mod systems;
 
 use crate::game_states::game_state_builder::{GameStateBuilder, GameStateBuilderBuilder};
-use crate::game_states::play_state::map::Map;
-use crate::game_states::play_state::players::{PlayerId, Players};
-use crate::game_states::play_state::systems::*;
 use crate::game_states::state_manager::GameState;
 use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::Tileset;
 use legion::schedule::Schedule;
 use legion::world::World;
+use map::Map;
 use piston::input::Event;
+use players::{PlayerId, Players};
 
 const TILEMAP_ID: &str = "ashlands";
 
@@ -44,6 +43,7 @@ impl PlayState {
                     .get_asset::<Tilemap>(TILEMAP_ID);
 
                 let mut world = resources.universe.create_world();
+                world.resources.insert(components::Tilemap(tilemap.clone()));
 
                 let mut map = Map::new(tilemap.clone());
                 map.create_tilemap_entities(&mut world);
@@ -55,23 +55,28 @@ impl PlayState {
                     PlayerId::Player1,
                     &player_spawns,
                     &resources.asset_storage.read().unwrap(),
+                    &tilemap,
                     &mut world,
                 );
                 players.create_player(
                     PlayerId::Player2,
                     &player_spawns,
                     &resources.asset_storage.read().unwrap(),
+                    &tilemap,
                     &mut world,
                 );
 
                 let play_state = PlayState {
                     world,
                     schedule: Schedule::builder()
-                        .add_system(create_controls_system())
-                        .add_system(create_turn_player_system())
-                        .add_system(create_move_player_system())
-                        .add_system(create_animation_system(map.tile_animations.clone()))
-                        .add_thread_local_fn(create_draw_system_fn(
+                        .add_system(systems::create_controls_system())
+                        .add_system(systems::create_turn_player_system())
+                        .add_system(systems::create_move_player_system())
+                        .add_system(systems::create_collision_system())
+                        .add_system(systems::create_animation_system(
+                            map.tile_animations.clone(),
+                        ))
+                        .add_thread_local_fn(systems::create_draw_system_fn(
                             resources.gl.clone(),
                             tilemap.tiles.len(),
                         ))
