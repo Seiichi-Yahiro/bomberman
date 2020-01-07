@@ -68,8 +68,8 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
                     .filter(tag_value(&layer))
                     .iter_immutable(&*world)
                 {
-                    let [x, y] = screen_position.0;
-                    let [w, h] = hit_box.0;
+                    let [x, y, w, h] =
+                        combine_screen_position_and_hit_box(&screen_position, &hit_box);
 
                     let color = [0.0, 1.0, 0.0, 0.7];
                     let radius = 0.5;
@@ -168,12 +168,19 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
             Read<Tileset>,
             Write<DefaultTileId>,
             Write<CurrentTileId>,
+            Write<HitBox>,
         )>::query())
         .build(move |commands, world, event, query| {
             if let Some(_button_args) = event.button_args() {
                 for (
                     entity,
-                    (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
+                    (
+                        move_direction_stack,
+                        tileset,
+                        mut default_tile_id,
+                        mut current_tile_id,
+                        mut hit_box,
+                    ),
                 ) in query.iter_entities(&mut *world)
                 {
                     if let Some(move_direction) = move_direction_stack.0.last() {
@@ -189,6 +196,10 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
                                 let animation =
                                     Animation::builder(frames.clone()).looping(true).build();
                                 commands.add_component(entity, AnimationType::Ownd(animation));
+                            }
+
+                            if let Some(new_hit_box) = tileset.0.hit_boxes.get(&tile_id) {
+                                hit_box.0 = *new_hit_box;
                             }
                         }
                     }
@@ -271,8 +282,8 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                             let y_map_position = YMapPosition(map_y);
                             let layer = Layer(1);
 
-                            let [x, y] = screen_position.0;
-                            let [w, h] = hit_box.0;
+                            let [x, y, w, h] =
+                                combine_screen_position_and_hit_box(&screen_position, &hit_box);
 
                             for (other_screen_position, other_hit_box) in compare_query
                                 .clone()
@@ -283,8 +294,10 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                                 )
                                 .iter_immutable(&*world)
                             {
-                                let [ox, oy] = other_screen_position.0;
-                                let [ow, oh] = other_hit_box.0;
+                                let [ox, oy, ow, oh] = combine_screen_position_and_hit_box(
+                                    &other_screen_position,
+                                    &other_hit_box,
+                                );
 
                                 if x < ox + ow && x + w > ox && y < oy + oh && y + h > oy {
                                     return true;
@@ -301,4 +314,16 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                 }
             },
         )
+}
+
+fn combine_screen_position_and_hit_box(
+    screen_position: &ScreenPosition,
+    hit_box: &HitBox,
+) -> crate::tiles::tileset::HitBox {
+    let [x, y, w, h] = {
+        let [pos_x, pos_y] = screen_position.0;
+        let [x, y, w, h] = hit_box.0;
+        [pos_x + x, pos_y + y, w, h]
+    };
+    [x, y, w, h]
 }

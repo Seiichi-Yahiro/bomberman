@@ -8,12 +8,14 @@ use std::sync::Arc;
 
 pub type TilePosition = [u32; 2];
 pub type TileId = u32;
+pub type HitBox = [f64; 4];
 
 #[derive(Default)]
 pub struct Tileset {
     pub texture_holder: TextureHolder,
     pub animation_frames_holder: HashMap<TileId, Arc<Vec<Frame>>>,
     pub properties: HashMap<TileId, tiled::Properties>,
+    pub hit_boxes: HashMap<TileId, HitBox>,
 }
 
 impl Tileset {
@@ -24,27 +26,66 @@ impl Tileset {
                 &tileset,
                 from_tilemap,
             ),
-            properties: tileset
-                .tiles
-                .iter()
-                .map(|tile| {
-                    (
-                        if !from_tilemap {
+            properties: Self::get_properties(tileset, from_tilemap),
+            hit_boxes: Self::get_hit_boxes(tileset, from_tilemap),
+        }
+    }
+
+    fn get_properties(
+        tileset: &tiled::Tileset,
+        from_tilemap: bool,
+    ) -> HashMap<TileId, tiled::Properties> {
+        tileset
+            .tiles
+            .iter()
+            .map(|tile| {
+                (
+                    if !from_tilemap {
+                        tile.id + tileset.first_gid
+                    } else {
+                        tile.id
+                    },
+                    tile.properties.clone(),
+                )
+            })
+            .collect()
+    }
+
+    fn get_hit_boxes(tileset: &tiled::Tileset, from_tilemap: bool) -> HashMap<TileId, HitBox> {
+        tileset
+            .tiles
+            .iter()
+            .filter_map(|tile| {
+                let object = tile.objectgroup.as_ref()?.objects.first()?;
+                match object.shape {
+                    tiled::ObjectShape::Rect { width, height } => {
+                        let tile_id = if !from_tilemap {
                             tile.id + tileset.first_gid
                         } else {
                             tile.id
-                        },
-                        tile.properties.clone(),
-                    )
-                })
-                .collect(),
-        }
+                        };
+                        Some((
+                            tile_id,
+                            [
+                                object.x as f64,
+                                object.y as f64,
+                                width as f64,
+                                height as f64,
+                            ],
+                        ))
+                    }
+                    _ => None,
+                }
+            })
+            .collect()
     }
 
     pub fn combine(&mut self, tileset: Tileset) {
         self.texture_holder.combine(tileset.texture_holder);
         self.animation_frames_holder
             .extend(tileset.animation_frames_holder);
+        self.properties.extend(tileset.properties);
+        self.hit_boxes.extend(tileset.hit_boxes);
     }
 }
 

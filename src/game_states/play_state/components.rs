@@ -19,6 +19,10 @@ impl ScreenPosition {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreviousScreenPosition(pub [f64; 2]);
 
+// Use with ScreenPosition
+#[derive(Clone, Copy, Debug)]
+pub struct HitBox(pub crate::tiles::tileset::HitBox);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct XMapPosition(pub u32);
 
@@ -51,19 +55,6 @@ pub struct Player(pub PlayerId);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Speed(pub f64);
-
-// Stores width and height
-// Use with ScreenPosition
-#[derive(Clone, Copy, Debug)]
-pub struct HitBox(pub [f64; 2]);
-
-/*impl HitBox {
-    pub fn contains(&self, screen_position: ScreenPosition) -> bool {
-        let [x, y, width, height] = self.0;
-        let [px, py] = screen_position.0;
-        px >= x && px < x + width && py >= y && py < y + height
-    }
-}*/
 
 pub struct Tilemap(pub Arc<crate::tiles::tilemap::Tilemap>);
 pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);

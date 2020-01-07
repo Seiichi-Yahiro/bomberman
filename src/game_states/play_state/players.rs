@@ -36,7 +36,7 @@ impl Players {
                 vec![(
                     components::ScreenPosition([x as f64, y as f64]),
                     components::PreviousScreenPosition([x as f64, y as f64]),
-                    components::HitBox([tilemap.tile_width as f64, tilemap.tile_height as f64]),
+                    components::HitBox(tileset.hit_boxes[&tile_id]),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),

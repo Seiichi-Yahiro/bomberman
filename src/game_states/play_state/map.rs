@@ -71,6 +71,8 @@ impl Map {
                                 vec![(
                                     components::ScreenPosition([x as f64, y as f64]),
                                     components::HitBox([
+                                        0.0,
+                                        0.0,
                                         self.tilemap.tile_width as f64,
                                         self.tilemap.tile_height as f64,
                                     ]),
@@ -130,6 +132,8 @@ impl Map {
                 let components = (
                     components::ScreenPosition([x as f64, y as f64]),
                     components::HitBox([
+                        0.0,
+                        0.0,
                         self.tilemap.tile_width as f64,
                         self.tilemap.tile_height as f64,
                     ]),
