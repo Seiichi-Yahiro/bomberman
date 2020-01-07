@@ -86,6 +86,7 @@ impl Players {
                     Button::Keyboard(Key::Down),
                     PlayerCommand::Movement(Direction::Down),
                 );
+                controls.insert(Button::Keyboard(Key::RCtrl), PlayerCommand::Bomb);
             }
             PlayerId::Player2 => {
                 controls.insert(
@@ -104,6 +105,7 @@ impl Players {
                     Button::Keyboard(Key::S),
                     PlayerCommand::Movement(Direction::Down),
                 );
+                controls.insert(Button::Keyboard(Key::LCtrl), PlayerCommand::Bomb);
             }
             PlayerId::Player3 => {}
             PlayerId::Player4 => {}
@@ -219,6 +221,7 @@ impl From<&PlayerFaceDirection> for &str {
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PlayerCommand {
     Movement(Direction),
+    Bomb,
 }
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

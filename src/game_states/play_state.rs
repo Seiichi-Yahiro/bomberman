@@ -35,6 +35,7 @@ impl PlayState {
                 "assets/textures/player/player2.xml",
                 PlayerId::Player2.as_str(),
             )
+            .load_asset::<Tileset>("assets/textures/bomb/bomb.xml", "bomb")
             .build(|resources| {
                 let tilemap = resources
                     .asset_storage
@@ -43,6 +44,9 @@ impl PlayState {
                     .get_asset::<Tilemap>(TILEMAP_ID);
 
                 let mut world = resources.universe.create_world();
+                world
+                    .resources
+                    .insert(components::AssetStorage(resources.asset_storage.clone()));
                 world.resources.insert(components::Tilemap(tilemap.clone()));
 
                 let mut map = Map::new(tilemap.clone());
@@ -70,6 +74,7 @@ impl PlayState {
                     world,
                     schedule: Schedule::builder()
                         .add_system(systems::create_controls_system())
+                        .add_system(systems::create_spawn_bomb_system())
                         .add_system(systems::create_turn_player_system())
                         .add_system(systems::create_move_player_system())
                         .add_system(systems::create_collision_system())
@@ -80,7 +85,7 @@ impl PlayState {
                             resources.gl.clone(),
                             tilemap.tiles.len(),
                         ))
-                        //.add_thread_local(systems::create_draw_hit_box_system(resources.gl.clone()))
+                        .add_thread_local(systems::create_draw_hit_box_system(resources.gl.clone()))
                         .build(),
                     map,
                     players,

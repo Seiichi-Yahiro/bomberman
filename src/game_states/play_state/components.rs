@@ -1,6 +1,7 @@
 use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerId};
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
+use legion::entity::Entity;
 use piston::input::Button;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -58,3 +59,7 @@ pub struct Speed(pub f64);
 
 pub struct Tilemap(pub Arc<crate::tiles::tilemap::Tilemap>);
 pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);
+pub struct AssetStorage(pub Arc<RwLock<crate::utils::asset_storage::AssetStorage>>);
+
+#[derive(Clone, Copy, Debug)]
+pub struct SpawnBomb(pub Entity);

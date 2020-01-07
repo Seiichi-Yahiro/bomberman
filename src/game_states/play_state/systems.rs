@@ -136,9 +136,11 @@ pub fn create_controls_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("controls_system")
         .read_resource::<Event>()
         .with_query(<(Read<Controls>, Write<MoveDirectionStack>)>::query())
-        .build(move |_commands, world, event, query| {
+        .build(move |commands, world, event, query| {
             if let Some(button_args) = event.button_args() {
-                for (controls, mut move_direction_stack) in query.iter(&mut *world) {
+                for (entity, (controls, mut move_direction_stack)) in
+                    query.iter_entities(&mut *world)
+                {
                     if let Some(action) = controls.0.get(&button_args.button) {
                         match action {
                             PlayerCommand::Movement(direction) => match button_args.state {
@@ -153,6 +155,11 @@ pub fn create_controls_system() -> Box<dyn Schedulable> {
                                         .map(|index| move_direction_stack.0.remove(index));
                                 }
                             },
+                            PlayerCommand::Bomb => {
+                                if button_args.state == ButtonState::Press {
+                                    commands.insert((), vec![(SpawnBomb(entity),)]);
+                                }
+                            }
                         }
                     }
                 }
@@ -326,4 +333,54 @@ fn combine_screen_position_and_hit_box(
         [pos_x + x, pos_y + y, w, h]
     };
     [x, y, w, h]
+}
+
+pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("spawn_bomb_system")
+        .read_resource::<Event>()
+        .read_resource::<AssetStorage>()
+        .read_component::<ScreenPosition>()
+        .read_component::<HitBox>()
+        .with_query(<Read<SpawnBomb>>::query())
+        .build(move |commands, world, (event, asset_storage), query| {
+            if let Some(_update_args) = event.update_args() {
+                for (entity, spawn_bomb) in query.iter_entities_immutable(&*world) {
+                    let tileset: Arc<crate::tiles::tileset::Tileset> = asset_storage
+                        .0
+                        .read()
+                        .unwrap()
+                        .get_asset::<crate::tiles::tileset::Tileset>("bomb");
+
+                    let tile_id = 1;
+
+                    let screen_position =
+                        world.get_component::<ScreenPosition>(spawn_bomb.0).unwrap();
+                    let hit_box = world.get_component::<HitBox>(spawn_bomb.0).unwrap();
+
+                    let [hit_box_x, hit_box_y, hit_box_w, hit_box_h] =
+                        combine_screen_position_and_hit_box(&screen_position, &hit_box);
+                    let [_, _, texture_w, texture_h] = tileset
+                        .texture_holder
+                        .get_texture_data(tile_id)
+                        .unwrap()
+                        .src_rect;
+                    let x = hit_box_x + hit_box_w / 2.0 - texture_w / 2.0;
+                    let y = hit_box_y + hit_box_h / 2.0 - texture_h / 2.0;
+
+                    let animation =
+                        Animation::builder(tileset.animation_frames_holder[&tile_id].clone())
+                            .looping(true)
+                            .build();
+
+                    commands.add_tag(entity, Layer(1));
+                    commands.remove_component::<SpawnBomb>(entity);
+                    commands.add_component(entity, ScreenPosition([x, y]));
+                    commands.add_component(entity, HitBox(tileset.hit_boxes[&tile_id]));
+                    commands.add_component(entity, Tileset(tileset));
+                    commands.add_component(entity, DefaultTileId(tile_id));
+                    commands.add_component(entity, CurrentTileId(tile_id));
+                    commands.add_component(entity, AnimationType::Ownd(animation))
+                }
+            }
+        })
 }

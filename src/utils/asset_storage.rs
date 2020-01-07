@@ -9,8 +9,6 @@ pub trait Asset: Any + Send + Sync {
         Self: Sized;
 }
 
-pub type AssetStorageResource = Arc<RwLock<AssetStorage>>;
-
 #[derive(Default)]
 pub struct AssetStorage {
     storage: HashMap<String, Arc<dyn Any + Send + Sync>>,
