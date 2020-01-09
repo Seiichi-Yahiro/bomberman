@@ -15,6 +15,20 @@ impl ScreenPosition {
         let [px, py] = p;
         Self([x + px, y + py])
     }
+
+    pub fn absolute_hit_box(&self, hit_box: HitBox) -> crate::tiles::tileset::HitBox {
+        let [pos_x, pos_y] = self.0;
+        let [x, y, w, h] = hit_box.0;
+        [pos_x + x, pos_y + y, w, h]
+    }
+
+    pub fn map_position(&self, tilemap: Tilemap) -> [u32; 2] {
+        let [x, y] = self.0;
+        [
+            x as u32 / tilemap.0.tile_width,
+            y as u32 / tilemap.0.tile_height,
+        ]
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -57,8 +71,13 @@ pub struct Player(pub PlayerId);
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Speed(pub f64);
 
+#[derive(Clone)]
 pub struct Tilemap(pub Arc<crate::tiles::tilemap::Tilemap>);
+
+#[derive(Clone)]
 pub struct Tileset(pub Arc<crate::tiles::tileset::Tileset>);
+
+#[derive(Clone)]
 pub struct AssetStorage(pub Arc<RwLock<crate::utils::asset_storage::AssetStorage>>);
 
 #[derive(Clone, Copy, Debug)]

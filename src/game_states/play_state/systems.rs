@@ -68,8 +68,7 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
                     .filter(tag_value(&layer))
                     .iter_immutable(&*world)
                 {
-                    let [x, y, w, h] =
-                        combine_screen_position_and_hit_box(&screen_position, &hit_box);
+                    let [x, y, w, h] = screen_position.absolute_hit_box(*hit_box);
 
                     let color = [0.0, 1.0, 0.0, 0.7];
                     let radius = 0.5;
@@ -269,15 +268,11 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                     for (hit_box, mut screen_position, mut previous_screen_position) in
                         query.iter(&mut *world)
                     {
-                        let [map_x, map_y] = {
-                            let [x, y] = screen_position.0;
-                            [
-                                x as u32 / tilemap.0.tile_width,
-                                y as u32 / tilemap.0.tile_height,
-                            ]
-                        };
+                        let layer = Layer(1);
+                        let [x, y, w, h] = screen_position.absolute_hit_box(*hit_box);
+                        let [map_x, map_y] = screen_position.map_position(tilemap.clone());
 
-                        let collision = [
+                        let is_colliding = [
                             [map_x, map_y],
                             [map_x + 1, map_y],
                             [map_x, map_y + 1],
@@ -285,54 +280,28 @@ pub fn create_collision_system() -> Box<dyn Schedulable> {
                         ]
                         .iter()
                         .any(|&[map_x, map_y]| {
-                            let x_map_position = XMapPosition(map_x);
-                            let y_map_position = YMapPosition(map_y);
-                            let layer = Layer(1);
-
-                            let [x, y, w, h] =
-                                combine_screen_position_and_hit_box(&screen_position, &hit_box);
-
-                            for (other_screen_position, other_hit_box) in compare_query
+                            compare_query
                                 .clone()
                                 .filter(
-                                    tag_value(&x_map_position)
-                                        & tag_value(&y_map_position)
-                                        & tag_value(&layer),
+                                    tag_value(&layer)
+                                        & tag_value(&XMapPosition(map_x))
+                                        & tag_value(&YMapPosition(map_y)),
                                 )
                                 .iter_immutable(&*world)
-                            {
-                                let [ox, oy, ow, oh] = combine_screen_position_and_hit_box(
-                                    &other_screen_position,
-                                    &other_hit_box,
-                                );
-
-                                if x < ox + ow && x + w > ox && y < oy + oh && y + h > oy {
-                                    return true;
-                                }
-                            }
-
-                            false
+                                .any(|(other_screen_position, other_hit_box)| {
+                                    let [ox, oy, ow, oh] =
+                                        other_screen_position.absolute_hit_box(*other_hit_box);
+                                    x < ox + ow && x + w > ox && y < oy + oh && y + h > oy
+                                })
                         });
 
-                        if collision {
+                        if is_colliding {
                             screen_position.0 = previous_screen_position.0;
                         }
                     }
                 }
             },
         )
-}
-
-fn combine_screen_position_and_hit_box(
-    screen_position: &ScreenPosition,
-    hit_box: &HitBox,
-) -> crate::tiles::tileset::HitBox {
-    let [x, y, w, h] = {
-        let [pos_x, pos_y] = screen_position.0;
-        let [x, y, w, h] = hit_box.0;
-        [pos_x + x, pos_y + y, w, h]
-    };
-    [x, y, w, h]
 }
 
 pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
@@ -358,7 +327,8 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
                     let hit_box = world.get_component::<HitBox>(spawn_bomb.0).unwrap();
 
                     let [hit_box_x, hit_box_y, hit_box_w, hit_box_h] =
-                        combine_screen_position_and_hit_box(&screen_position, &hit_box);
+                        screen_position.absolute_hit_box(*hit_box);
+
                     let [_, _, texture_w, texture_h] = tileset
                         .texture_holder
                         .get_texture_data(tile_id)
