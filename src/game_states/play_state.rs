@@ -80,7 +80,7 @@ impl PlayState {
 
                 let mut map = Map::new(tilemap.clone());
                 map.create_tilemap_entities(&mut world, &mut physics_world);
-                //map.create_soft_blocks(&mut world);
+                map.create_soft_blocks(&mut world, &mut physics_world);
 
                 let mut players = Players::new();
                 let player_spawns = map.get_player_spawns();

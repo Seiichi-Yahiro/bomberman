@@ -140,7 +140,7 @@ impl Map {
             .collect_vec();
     }
 
-    pub fn create_soft_blocks(&mut self, world: &mut World) {
+    pub fn create_soft_blocks(&mut self, world: &mut World, physics_world: &mut PhysicsWorld) {
         let should_spawn_soft_block = |soft_block: &&Object| -> bool {
             soft_block
                 .properties
@@ -162,32 +162,61 @@ impl Map {
                 let x = object.x.abs();
                 let y = object.y.abs();
 
-                let tags = (
-                    components::Layer(*layer_id as usize),
-                    components::XMapPosition(x as u32 / self.tilemap.tile_width),
-                    components::YMapPosition(y as u32 / self.tilemap.tile_height),
-                );
+                let [hx, hy, w, h] = self.tilemap.tileset.hit_boxes.get(&object.gid).unwrap();
+
+                let half_tile_width = self.tilemap.tile_width as f64 / 2.0;
+                let half_tile_height = self.tilemap.tile_height as f64 / 2.0;
+
+                let body = RigidBodyDesc::new()
+                    .translation(Vector2::new(
+                        x as f64 + half_tile_width,
+                        y as f64 + half_tile_height,
+                    ))
+                    .status(BodyStatus::Static)
+                    .gravity_enabled(false)
+                    .build();
+
+                let body_handle = physics_world.bodies.insert(body);
+
+                let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
+                    w / 2.0,
+                    h / 2.0,
+                ))))
+                .translation(Vector2::new(
+                    hx - half_tile_width + w / 2.0,
+                    hy - half_tile_height + h / 2.0,
+                ))
+                .build(BodyPartHandle(body_handle, 0));
+
+                let collider_handle = physics_world.colliders.insert(collider);
+
+                let tags = (components::Layer(*layer_id as usize),);
 
                 let components = (
-                    components::ScreenPosition([x as f64, y as f64]),
-                    components::HitBox([
-                        0.0,
-                        0.0,
-                        self.tilemap.tile_width as f64,
-                        self.tilemap.tile_height as f64,
-                    ]),
                     components::DefaultTileId(object.gid),
                     components::CurrentTileId(object.gid),
                     components::Tileset(self.tilemap.tileset.clone()),
+                    components::BodyHandle(body_handle),
+                    components::ColliderHandle(collider_handle),
                 );
 
-                Some(
-                    world
-                        .insert(tags, vec![components])
-                        .first()
-                        .unwrap()
-                        .clone(),
-                )
+                let entity = world
+                    .insert(tags, vec![components])
+                    .first()
+                    .unwrap()
+                    .clone();
+
+                if let Some(animation) = self
+                    .tile_animations
+                    .read()
+                    .unwrap()
+                    .get(&object.gid)
+                    .cloned()
+                {
+                    world.add_component(entity, components::AnimationType::Shared(animation));
+                }
+
+                Some(entity)
             }
             _ => None,
         };
