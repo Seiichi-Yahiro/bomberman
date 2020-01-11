@@ -98,7 +98,6 @@ impl Asset for Tilemap {
                             path.display()
                         ))
                     }),
-                    true,
                 )
             })
             .fold(Tileset::default(), |mut acc, item| {

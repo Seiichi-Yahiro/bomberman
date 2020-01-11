@@ -68,7 +68,6 @@ impl Animation {
 
     pub fn load_animation_frames_from_tileset(
         tileset: &tiled::Tileset,
-        from_tilemap: bool,
     ) -> HashMap<u32, Arc<Vec<Frame>>> {
         tileset
             .tiles
@@ -80,19 +79,12 @@ impl Animation {
                     .iter()
                     .map(Self::convert_tiled_frames)
                     .map(|mut frame| {
-                        if !from_tilemap {
-                            frame.tile_id += tileset.first_gid;
-                        }
+                        frame.tile_id += tileset.first_gid;
                         frame
                     })
                     .collect();
 
-                let tile_id = if !from_tilemap {
-                    tile.id + tileset.first_gid
-                } else {
-                    tile.id
-                };
-                Some((tile_id, Arc::new(frames)))
+                Some((tile.id + tileset.first_gid, Arc::new(frames)))
             })
             .collect()
     }
@@ -176,7 +168,7 @@ mod tests {
         let tileset = tiled::parse_tileset(tileset_str.as_bytes(), gid).unwrap();
         let tileset = Tileset {
             texture_holder: Default::default(),
-            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset, false),
+            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
             properties: Default::default(),
             hit_boxes: Default::default(),
         };

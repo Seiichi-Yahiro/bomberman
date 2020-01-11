@@ -34,8 +34,19 @@ impl Map {
     }
 
     fn create_shared_tile_animations(tilemap: &Tilemap) -> HashMap<TileId, Arc<RwLock<Animation>>> {
+        let mut used_tile_ids = tilemap.get_used_tile_ids();
+
         tilemap
-            .get_used_tile_ids()
+            .object_groups
+            .get(ArenaObjectGroup::SoftBlockAreas.as_str())
+            .iter()
+            .flat_map(|objects| objects.iter())
+            .map(|object| object.gid)
+            .for_each(|tile_id| {
+                used_tile_ids.insert(tile_id);
+            });
+
+        used_tile_ids
             .iter()
             .filter_map(|tile_id| {
                 let frames = tilemap
@@ -77,7 +88,7 @@ impl Map {
                             .unwrap()
                             .clone();
 
-                        if layer_index == 1 {
+                        if let Some(&[hx, hy, w, h]) = self.tilemap.tileset.hit_boxes.get(tile_id) {
                             let half_tile_width = self.tilemap.tile_width as f64 / 2.0;
                             let half_tile_height = self.tilemap.tile_height as f64 / 2.0;
 
@@ -93,8 +104,12 @@ impl Map {
                             let body_handle = physics_world.bodies.insert(body);
 
                             let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
-                                Vector2::new(half_tile_width, half_tile_height),
+                                Vector2::new(w / 2.0, h / 2.0),
                             )))
+                            .translation(Vector2::new(
+                                hx - half_tile_width + w / 2.0,
+                                hy - half_tile_height + h / 2.0,
+                            ))
                             .build(BodyPartHandle(body_handle, 0));
 
                             let collider_handle = physics_world.colliders.insert(collider);

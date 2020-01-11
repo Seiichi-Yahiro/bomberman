@@ -19,61 +19,39 @@ pub struct Tileset {
 }
 
 impl Tileset {
-    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path, from_tilemap: bool) -> Tileset {
+    pub fn from_tileset(tileset: &tiled::Tileset, folder: &Path) -> Tileset {
         Tileset {
             texture_holder: TextureHolder::from_tileset(&tileset, folder),
-            animation_frames_holder: Animation::load_animation_frames_from_tileset(
-                &tileset,
-                from_tilemap,
-            ),
-            properties: Self::get_properties(tileset, from_tilemap),
-            hit_boxes: Self::get_hit_boxes(tileset, from_tilemap),
+            animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset),
+            properties: Self::get_properties(tileset),
+            hit_boxes: Self::get_hit_boxes(tileset),
         }
     }
 
-    fn get_properties(
-        tileset: &tiled::Tileset,
-        from_tilemap: bool,
-    ) -> HashMap<TileId, tiled::Properties> {
+    fn get_properties(tileset: &tiled::Tileset) -> HashMap<TileId, tiled::Properties> {
         tileset
             .tiles
             .iter()
-            .map(|tile| {
-                (
-                    if !from_tilemap {
-                        tile.id + tileset.first_gid
-                    } else {
-                        tile.id
-                    },
-                    tile.properties.clone(),
-                )
-            })
+            .map(|tile| (tile.id + tileset.first_gid, tile.properties.clone()))
             .collect()
     }
 
-    fn get_hit_boxes(tileset: &tiled::Tileset, from_tilemap: bool) -> HashMap<TileId, HitBox> {
+    fn get_hit_boxes(tileset: &tiled::Tileset) -> HashMap<TileId, HitBox> {
         tileset
             .tiles
             .iter()
             .filter_map(|tile| {
                 let object = tile.objectgroup.as_ref()?.objects.first()?;
                 match object.shape {
-                    tiled::ObjectShape::Rect { width, height } => {
-                        let tile_id = if !from_tilemap {
-                            tile.id + tileset.first_gid
-                        } else {
-                            tile.id
-                        };
-                        Some((
-                            tile_id,
-                            [
-                                object.x as f64,
-                                object.y as f64,
-                                width as f64,
-                                height as f64,
-                            ],
-                        ))
-                    }
+                    tiled::ObjectShape::Rect { width, height } => Some((
+                        tile.id + tileset.first_gid,
+                        [
+                            object.x as f64,
+                            object.y as f64,
+                            width as f64,
+                            height as f64,
+                        ],
+                    )),
                     _ => None,
                 }
             })
@@ -113,7 +91,6 @@ impl Asset for Tileset {
                     path.display()
                 ))
             }),
-            false,
         )
     }
 }
