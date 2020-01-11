@@ -7,7 +7,6 @@ use legion::entity::Entity;
 use legion::world::World;
 use nalgebra::Vector2;
 use ncollide2d::shape::{Cuboid, ShapeHandle};
-use nphysics2d::math::Velocity;
 use nphysics2d::object::{BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use piston::input::{Button, Key};
 use std::collections::HashMap;
@@ -41,12 +40,12 @@ impl Players {
 
         let body = RigidBodyDesc::new()
             .status(BodyStatus::Dynamic)
+            .linear_damping(5.0)
             .mass(1.0)
             .translation(Vector2::new(
                 x as f64 + half_tile_width,
                 y as f64 + half_tile_height,
             ))
-            .velocity(Velocity::linear(0.0, 10.0))
             .gravity_enabled(false)
             .build();
         let body_handle = physics_world.bodies.insert(body);
@@ -72,8 +71,8 @@ impl Players {
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),
-                    components::Speed(1.0),
                     components::MoveDirectionStack(vec![]),
+                    components::MovementSpeed(1.0),
                     Self::create_player_controls(id),
                     components::AnimationType::Ownd(
                         tileset

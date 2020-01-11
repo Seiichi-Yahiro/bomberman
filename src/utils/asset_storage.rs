@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub trait Asset: Any + Send + Sync {
     fn load_from_file(path: &Path) -> Self

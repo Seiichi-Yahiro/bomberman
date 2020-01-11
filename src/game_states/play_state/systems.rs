@@ -6,6 +6,9 @@ use crate::tiles::tileset::TileId;
 use crate::utils::sprite::Sprite;
 use graphics::Transformed;
 use legion::prelude::*;
+use nalgebra::Vector2;
+use nphysics2d::algebra::{Force2, ForceType};
+use nphysics2d::object::Body;
 use opengl_graphics::{GlGraphics, Texture};
 use piston::input::{ButtonEvent, ButtonState, Event, RenderEvent, UpdateEvent};
 use std::cell::RefCell;
@@ -92,7 +95,7 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
     SystemBuilder::new("draw_hit_box_system")
         .read_resource::<Event>()
         .read_resource::<PhysicsWorld>()
-        .with_query(<(Read<ColliderHandle>)>::query())
+        .with_query(<Read<ColliderHandle>>::query())
         .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
                 let ref mut g = *gl.borrow_mut();
@@ -131,7 +134,7 @@ pub fn create_update_physics_world_system() -> Box<dyn Schedulable> {
         .write_resource::<PhysicsWorld>()
         .build(move |_commands, _world, (event, physics_world), _query| {
             if let Some(_update_args) = event.update_args() {
-                let mut p: &mut PhysicsWorld = &mut *physics_world;
+                let p: &mut PhysicsWorld = &mut *physics_world;
                 p.mechanical_world.step(
                     &mut p.geometrical_world,
                     &mut p.bodies,
@@ -277,91 +280,39 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
 pub fn create_move_player_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("move_player_system")
         .read_resource::<Event>()
+        .write_resource::<PhysicsWorld>()
         .with_query(<(
             Read<MoveDirectionStack>,
-            Read<Speed>,
-            Write<ScreenPosition>,
-            Write<PreviousScreenPosition>,
+            Read<MovementSpeed>,
+            Read<BodyHandle>,
         )>::query())
-        .build(move |_commands, world, event, query| {
+        .build(move |_commands, world, (event, physics_world), query| {
             if let Some(_update_args) = event.update_args() {
-                for (
-                    move_direction_stack,
-                    speed,
-                    mut screen_position,
-                    mut previous_screen_position,
-                ) in query.iter(&mut *world)
-                {
-                    if let Some(move_direction) = move_direction_stack.0.last() {
-                        let move_speed = 0.25 * speed.0;
+                query
+                    .iter(&mut *world)
+                    .for_each(|(move_direction_stack, movement_speed, body)| {
+                        if let Some(move_direction) = move_direction_stack.0.last() {
+                            let p: &mut PhysicsWorld = &mut *physics_world;
 
-                        previous_screen_position.0 = screen_position.0;
+                            let move_speed = movement_speed.0;
 
-                        *screen_position = match move_direction {
-                            Direction::Up => screen_position.translate([0.0, -move_speed]),
-                            Direction::Down => screen_position.translate([0.0, move_speed]),
-                            Direction::Left => screen_position.translate([-move_speed, 0.0]),
-                            Direction::Right => screen_position.translate([move_speed, 0.0]),
+                            let force = match move_direction {
+                                Direction::Up => Vector2::new(0.0, -move_speed),
+                                Direction::Down => Vector2::new(0.0, move_speed),
+                                Direction::Left => Vector2::new(-move_speed, 0.0),
+                                Direction::Right => Vector2::new(move_speed, 0.0),
+                            };
+
+                            p.bodies.rigid_body_mut(body.0).unwrap().apply_force(
+                                0,
+                                &Force2::linear(force),
+                                ForceType::Impulse,
+                                true,
+                            );
                         }
-                    }
-                }
+                    })
             }
         })
-}
-
-pub fn create_collision_system() -> Box<dyn Schedulable> {
-    SystemBuilder::new("collision_system")
-        .read_resource::<Event>()
-        .read_resource::<Tilemap>()
-        .with_query(<(
-            Read<HitBox>,
-            Write<ScreenPosition>,
-            Write<PreviousScreenPosition>,
-        )>::query())
-        .with_query(
-            <(Read<ScreenPosition>, Read<HitBox>)>::query()
-                .filter(!component::<PreviousScreenPosition>()),
-        )
-        .build(
-            move |_commands, world, (event, tilemap), (query, compare_query)| {
-                if let Some(_update_args) = event.update_args() {
-                    for (hit_box, mut screen_position, mut previous_screen_position) in
-                        query.iter(&mut *world)
-                    {
-                        let layer = Layer(1);
-                        let [x, y, w, h] = screen_position.absolute_hit_box(*hit_box);
-                        let [map_x, map_y] = screen_position.map_position(tilemap.clone());
-
-                        let is_colliding = [
-                            [map_x, map_y],
-                            [map_x + 1, map_y],
-                            [map_x, map_y + 1],
-                            [map_x + 1, map_y + 1],
-                        ]
-                        .iter()
-                        .any(|&[map_x, map_y]| {
-                            compare_query
-                                .clone()
-                                .filter(
-                                    tag_value(&layer)
-                                        & tag_value(&XMapPosition(map_x))
-                                        & tag_value(&YMapPosition(map_y)),
-                                )
-                                .iter_immutable(&*world)
-                                .any(|(other_screen_position, other_hit_box)| {
-                                    let [ox, oy, ow, oh] =
-                                        other_screen_position.absolute_hit_box(*other_hit_box);
-                                    x < ox + ow && x + w > ox && y < oy + oh && y + h > oy
-                                })
-                        });
-
-                        if is_colliding {
-                            screen_position.0 = previous_screen_position.0;
-                        }
-                    }
-                }
-            },
-        )
 }
 
 pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {

@@ -70,7 +70,7 @@ pub enum AnimationType {
 pub struct Player(pub PlayerId);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Speed(pub f64);
+pub struct MovementSpeed(pub f64);
 
 #[derive(Clone)]
 pub struct Tilemap(pub Arc<crate::tiles::tilemap::Tilemap>);
@@ -84,5 +84,8 @@ pub struct AssetStorage(pub Arc<RwLock<crate::utils::asset_storage::AssetStorage
 #[derive(Clone, Copy, Debug)]
 pub struct SpawnBomb(pub Entity);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BodyHandle(pub DefaultBodyHandle);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ColliderHandle(pub DefaultColliderHandle);
