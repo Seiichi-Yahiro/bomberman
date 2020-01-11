@@ -58,13 +58,18 @@ impl Players {
             hx - half_tile_width + w / 2.0,
             hy - half_tile_height + h / 2.0,
         ))
+        .user_data(components::EntityType::Player)
         .build(BodyPartHandle(body_handle, 0));
 
         let collider_handle = physics_world.colliders.insert(collider);
 
         let player = world
             .insert(
-                (components::Layer(1), components::Player(id)),
+                (
+                    components::Layer(2),
+                    components::Player(id),
+                    components::EntityType::Player,
+                ),
                 vec![(
                     components::BodyHandle(body_handle),
                     components::ColliderHandle(collider_handle),

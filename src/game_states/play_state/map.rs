@@ -81,6 +81,7 @@ impl Map {
                             world,
                             physics_world,
                             entity,
+                            components::EntityType::HardBlock,
                             tile_id,
                             x as f64,
                             y as f64,
@@ -118,7 +119,15 @@ impl Map {
 
                 let entity = self.create_tilemap_entity(world, *layer_id as usize, object.gid);
 
-                self.try_adding_physical_component(world, physics_world, entity, object.gid, x, y);
+                self.try_adding_physical_component(
+                    world,
+                    physics_world,
+                    entity,
+                    components::EntityType::SoftBlock,
+                    object.gid,
+                    x,
+                    y,
+                );
                 self.try_adding_shared_animation_component(world, entity, object.gid);
 
                 Some(entity)
@@ -157,6 +166,7 @@ impl Map {
         world: &mut World,
         physics_world: &mut PhysicsWorld,
         entity: Entity,
+        entity_type: components::EntityType,
         tile_id: TileId,
         x: f64,
         y: f64,
@@ -181,10 +191,12 @@ impl Map {
                 hx - half_tile_width + w / 2.0,
                 hy - half_tile_height + h / 2.0,
             ))
+            .user_data(entity_type)
             .build(BodyPartHandle(body_handle, 0));
 
             let collider_handle = physics_world.colliders.insert(collider);
 
+            world.add_tag(entity, entity_type);
             world.add_component(entity, components::BodyHandle(body_handle));
             world.add_component(entity, components::ColliderHandle(collider_handle));
         } else {

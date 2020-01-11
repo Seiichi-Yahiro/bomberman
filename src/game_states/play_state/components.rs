@@ -89,3 +89,11 @@ pub struct BodyHandle(pub DefaultBodyHandle);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ColliderHandle(pub DefaultColliderHandle);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EntityType {
+    Player,
+    Bomb,
+    SoftBlock,
+    HardBlock,
+}

@@ -5,10 +5,13 @@ use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use crate::utils::sprite::Sprite;
 use graphics::Transformed;
+use itertools::Itertools;
 use legion::prelude::*;
 use nalgebra::Vector2;
+use ncollide2d::narrow_phase::ContactEvent;
+use ncollide2d::shape::{Cuboid, ShapeHandle};
 use nphysics2d::algebra::{Force2, ForceType};
-use nphysics2d::object::Body;
+use nphysics2d::object::{Body, BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use opengl_graphics::{GlGraphics, Texture};
 use piston::input::{ButtonEvent, ButtonState, Event, RenderEvent, UpdateEvent};
 use std::cell::RefCell;
@@ -308,49 +311,121 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("spawn_bomb_system")
         .read_resource::<Event>()
         .read_resource::<AssetStorage>()
-        .read_component::<ScreenPosition>()
-        .read_component::<HitBox>()
+        .write_resource::<PhysicsWorld>()
+        .read_component::<BodyHandle>()
         .with_query(<Read<SpawnBomb>>::query())
-        .build(move |commands, world, (event, asset_storage), query| {
-            if let Some(_update_args) = event.update_args() {
-                for (entity, spawn_bomb) in query.iter_entities_immutable(&*world) {
-                    let tileset: Arc<crate::tiles::tileset::Tileset> = asset_storage
-                        .0
-                        .read()
-                        .unwrap()
-                        .get_asset::<crate::tiles::tileset::Tileset>("bomb");
+        .build(
+            move |commands, world, (event, asset_storage, physics_world), query| {
+                if let Some(_update_args) = event.update_args() {
+                    for (entity, spawn_bomb) in query.iter_entities_immutable(&*world) {
+                        let tileset: Arc<crate::tiles::tileset::Tileset> = asset_storage
+                            .0
+                            .read()
+                            .unwrap()
+                            .get_asset::<crate::tiles::tileset::Tileset>("bomb");
 
-                    let tile_id = 1;
+                        let tile_id = 1;
 
-                    let screen_position =
-                        world.get_component::<ScreenPosition>(spawn_bomb.0).unwrap();
-                    let hit_box = world.get_component::<HitBox>(spawn_bomb.0).unwrap();
+                        let p: &mut PhysicsWorld = &mut *physics_world;
 
-                    let [hit_box_x, hit_box_y, hit_box_w, hit_box_h] =
-                        screen_position.absolute_hit_box(*hit_box);
+                        let [x, y] = {
+                            let body = world.get_component::<BodyHandle>(spawn_bomb.0).unwrap();
+                            let body = p.bodies.rigid_body(body.0).unwrap();
+                            let pos = body.position().translation.vector.data;
+                            [pos[0], pos[1]]
+                        };
 
-                    let [_, _, texture_w, texture_h] = tileset
-                        .texture_holder
-                        .get_texture_data(tile_id)
-                        .unwrap()
-                        .src_rect;
-                    let x = hit_box_x + hit_box_w / 2.0 - texture_w / 2.0;
-                    let y = hit_box_y + hit_box_h / 2.0 - texture_h / 2.0;
+                        let (body_handle, collider_handle) = {
+                            let [hx, hy, w, h] = tileset.hit_boxes[&tile_id];
 
-                    let animation =
-                        Animation::builder(tileset.animation_frames_holder[&tile_id].clone())
-                            .looping(true)
-                            .build();
+                            let body = RigidBodyDesc::new()
+                                .status(BodyStatus::Disabled)
+                                .linear_damping(5.0)
+                                .mass(1.0)
+                                .translation(Vector2::new(x, y))
+                                .gravity_enabled(false)
+                                .build();
+                            let body_handle = p.bodies.insert(body);
 
-                    commands.add_tag(entity, Layer(1));
-                    commands.remove_component::<SpawnBomb>(entity);
-                    commands.add_component(entity, ScreenPosition([x, y]));
-                    commands.add_component(entity, HitBox(tileset.hit_boxes[&tile_id]));
-                    commands.add_component(entity, Tileset(tileset));
-                    commands.add_component(entity, DefaultTileId(tile_id));
-                    commands.add_component(entity, CurrentTileId(tile_id));
-                    commands.add_component(entity, AnimationType::Ownd(animation))
+                            let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
+                                Vector2::new(w / 2.0, h / 2.0),
+                            )))
+                            /*.translation(Vector2::new(
+                                hx - half_tile_width + w / 2.0,
+                                hy - half_tile_height + h / 2.0,
+                            ))*/
+                            .user_data(EntityType::Bomb)
+                            .build(BodyPartHandle(body_handle, 0));
+
+                            let collider_handle = p.colliders.insert(collider);
+
+                            (body_handle, collider_handle)
+                        };
+
+                        let animation =
+                            Animation::builder(tileset.animation_frames_holder[&tile_id].clone())
+                                .looping(true)
+                                .build();
+
+                        let tags = (Layer(1), EntityType::Bomb);
+                        let components = (
+                            Tileset(tileset),
+                            DefaultTileId(tile_id),
+                            CurrentTileId(tile_id),
+                            AnimationType::Ownd(animation),
+                            BodyHandle(body_handle),
+                            ColliderHandle(collider_handle),
+                        );
+
+                        commands.insert(tags, vec![components]);
+                        commands.delete(entity);
+                    }
                 }
+            },
+        )
+}
+
+pub fn create_update_bomb_collision_status_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("update_bomb_collision_status_system")
+        .read_resource::<Event>()
+        .write_resource::<PhysicsWorld>()
+        .build(move |_commands, _world, (event, physics_world), _query| {
+            if let Some(_update_args) = event.update_args() {
+                let p: &mut PhysicsWorld = &mut *physics_world;
+                p.geometrical_world
+                    .contact_events()
+                    .iter()
+                    .filter_map(|contact_event| match contact_event {
+                        ContactEvent::Started(h1, h2) => None,
+                        ContactEvent::Stopped(h1, h2) => {
+                            let collider1 = p.colliders.get(*h1).unwrap();
+                            let collider2 = p.colliders.get(*h2).unwrap();
+                            match (
+                                collider1
+                                    .user_data()
+                                    .and_then(|it| it.downcast_ref::<EntityType>()),
+                                collider2
+                                    .user_data()
+                                    .and_then(|it| it.downcast_ref::<EntityType>()),
+                            ) {
+                                (Some(EntityType::Bomb), Some(EntityType::Player)) => {
+                                    Some(collider1.body())
+                                }
+                                (Some(EntityType::Player), Some(EntityType::Bomb)) => {
+                                    Some(collider2.body())
+                                }
+                                _ => None,
+                            }
+                        }
+                    })
+                    .collect_vec()
+                    .into_iter()
+                    .for_each(|bomb_handle| {
+                        p.bodies
+                            .rigid_body_mut(bomb_handle)
+                            .unwrap()
+                            .set_status(BodyStatus::Static);
+                    });
             }
         })
 }

@@ -106,7 +106,8 @@ impl PlayState {
                     world,
                     schedule: Schedule::builder()
                         .add_system(systems::create_controls_system())
-                        //.add_system(systems::create_spawn_bomb_system())
+                        .add_system(systems::create_spawn_bomb_system())
+                        .add_system(systems::create_update_bomb_collision_status_system())
                         .add_system(systems::create_turn_player_system())
                         .add_system(systems::create_move_player_system())
                         .add_system(systems::create_update_physics_world_system())
@@ -115,7 +116,7 @@ impl PlayState {
                         ))
                         .add_thread_local(systems::create_draw_system(
                             resources.gl.clone(),
-                            tilemap.tiles.len(),
+                            tilemap.tiles.len() + 1,
                         ))
                         .add_thread_local(systems::create_draw_hit_box_system(resources.gl.clone()))
                         .build(),
