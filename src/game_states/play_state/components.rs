@@ -2,6 +2,7 @@ use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerId
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use legion::entity::Entity;
+use nphysics2d::object::{DefaultBodyHandle, DefaultColliderHandle};
 use piston::input::Button;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -82,3 +83,6 @@ pub struct AssetStorage(pub Arc<RwLock<crate::utils::asset_storage::AssetStorage
 
 #[derive(Clone, Copy, Debug)]
 pub struct SpawnBomb(pub Entity);
+
+pub struct BodyHandle(pub DefaultBodyHandle);
+pub struct ColliderHandle(pub DefaultColliderHandle);

@@ -1,14 +1,17 @@
-use crate::game_states::play_state::components;
 use crate::game_states::play_state::object_groups::{
     ArenaObjectGroup, PlayerSpawnsProperties, SoftBlockAreasProperties,
 };
 use crate::game_states::play_state::players::PlayerId;
+use crate::game_states::play_state::{components, PhysicsWorld};
 use crate::tiles::animation::Animation;
 use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::{TileId, TilePosition};
 use itertools::Itertools;
 use legion::entity::Entity;
 use legion::world::World;
+use nalgebra::Vector2;
+use ncollide2d::shape::{Cuboid, ShapeHandle};
+use nphysics2d::object::{BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tiled::{Object, PropertyValue};
@@ -51,7 +54,7 @@ impl Map {
             .collect()
     }
 
-    pub fn create_tilemap_entities(&mut self, world: &mut World) {
+    pub fn create_tilemap_entities(&mut self, world: &mut World, physics_world: &mut PhysicsWorld) {
         self.tilemap_entities = self
             .tilemap
             .tiles
@@ -63,19 +66,8 @@ impl Map {
                     .map(|(&[x, y], tile_id)| {
                         let entity = world
                             .insert(
-                                (
-                                    components::Layer(layer_index),
-                                    components::XMapPosition(x / self.tilemap.tile_width),
-                                    components::YMapPosition(y / self.tilemap.tile_height),
-                                ),
+                                (components::Layer(layer_index),),
                                 vec![(
-                                    components::ScreenPosition([x as f64, y as f64]),
-                                    components::HitBox([
-                                        0.0,
-                                        0.0,
-                                        self.tilemap.tile_width as f64,
-                                        self.tilemap.tile_height as f64,
-                                    ]),
                                     components::DefaultTileId(*tile_id),
                                     components::CurrentTileId(*tile_id),
                                     components::Tileset(self.tilemap.tileset.clone()),
@@ -84,6 +76,38 @@ impl Map {
                             .first()
                             .unwrap()
                             .clone();
+
+                        if layer_index == 1 {
+                            let half_tile_width = self.tilemap.tile_width as f64 / 2.0;
+                            let half_tile_height = self.tilemap.tile_height as f64 / 2.0;
+
+                            let body = RigidBodyDesc::new()
+                                .translation(Vector2::new(
+                                    x as f64 + half_tile_width,
+                                    y as f64 + half_tile_height,
+                                ))
+                                .status(BodyStatus::Static)
+                                .gravity_enabled(false)
+                                .build();
+
+                            let body_handle = physics_world.bodies.insert(body);
+
+                            let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
+                                Vector2::new(half_tile_width, half_tile_height),
+                            )))
+                            .build(BodyPartHandle(body_handle, 0));
+
+                            let collider_handle = physics_world.colliders.insert(collider);
+
+                            world.add_component(entity, components::BodyHandle(body_handle));
+                            world
+                                .add_component(entity, components::ColliderHandle(collider_handle));
+                        } else {
+                            world.add_component(
+                                entity,
+                                components::ScreenPosition([x as f64, y as f64]),
+                            );
+                        }
 
                         if let Some(animation) =
                             self.tile_animations.read().unwrap().get(tile_id).cloned()

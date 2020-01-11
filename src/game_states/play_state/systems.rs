@@ -1,5 +1,6 @@
 use crate::game_states::play_state::components::*;
 use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerFaceDirection};
+use crate::game_states::play_state::PhysicsWorld;
 use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use crate::utils::sprite::Sprite;
@@ -18,8 +19,10 @@ pub fn create_draw_system(
 ) -> Box<dyn Runnable> {
     SystemBuilder::new("draw_system")
         .read_resource::<Event>()
+        .read_resource::<PhysicsWorld>()
         .with_query(<(Read<ScreenPosition>, Read<CurrentTileId>, Read<Tileset>)>::query())
-        .build_thread_local(move |_commands, world, event, query| {
+        .with_query(<(Read<BodyHandle>, Read<CurrentTileId>, Read<Tileset>)>::query())
+        .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
                 let ref mut g = *gl.borrow_mut();
                 let c = g.draw_begin(render_args.viewport());
@@ -28,23 +31,55 @@ pub fn create_draw_system(
 
                 for layer in 0..number_of_layers {
                     let layer = Layer(layer);
-                    let query = query.clone().filter(tag_value(&layer));
 
-                    for (pos, tile_id, tileset) in query.iter_immutable(&*world) {
-                        let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
+                    query
+                        .0
+                        .clone()
+                        .filter(tag_value(&layer))
+                        .iter_immutable(&*world)
+                        .for_each(|(pos, tile_id, tileset)| {
+                            let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
 
-                        if let Some(texture_data) = texture_data {
-                            if let Some(sprite) = &mut sprite {
-                                sprite.update_texture_data(texture_data);
-                            } else {
-                                sprite = Some(Sprite::from_texture_data(texture_data));
+                            if let Some(texture_data) = texture_data {
+                                if let Some(sprite) = &mut sprite {
+                                    sprite.update_texture_data(texture_data);
+                                } else {
+                                    sprite = Some(Sprite::from_texture_data(texture_data));
+                                }
+
+                                let [x, y] = pos.0;
+
+                                sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
                             }
+                        });
 
-                            let [x, y] = pos.0;
+                    query
+                        .1
+                        .clone()
+                        .filter(tag_value(&layer))
+                        .iter_immutable(&*world)
+                        .for_each(|(body, tile_id, tileset)| {
+                            let p: &PhysicsWorld = &*physics_world;
+                            let body = p.bodies.rigid_body(body.0).unwrap();
+                            let pos = body.position().translation.vector.data;
 
-                            sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
-                        }
-                    }
+                            let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
+
+                            if let Some(texture_data) = texture_data {
+                                let [_, _, w, h] = texture_data.src_rect;
+
+                                if let Some(sprite) = &mut sprite {
+                                    sprite.update_texture_data(texture_data);
+                                } else {
+                                    sprite = Some(Sprite::from_texture_data(texture_data));
+                                }
+
+                                sprite
+                                    .as_ref()
+                                    .unwrap()
+                                    .draw(c.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0), g)
+                            }
+                        });
                 }
 
                 g.draw_end();
@@ -56,19 +91,26 @@ pub fn create_draw_system(
 pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnable> {
     SystemBuilder::new("draw_hit_box_system")
         .read_resource::<Event>()
-        .with_query(<(Read<ScreenPosition>, Read<HitBox>)>::query())
-        .build_thread_local(move |_commands, world, event, query| {
+        .read_resource::<PhysicsWorld>()
+        .with_query(<(Read<ColliderHandle>)>::query())
+        .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
                 let ref mut g = *gl.borrow_mut();
                 let c = g.draw_begin(render_args.viewport());
 
-                let layer = Layer(1);
-                for (screen_position, hit_box) in query
-                    .clone()
-                    .filter(tag_value(&layer))
-                    .iter_immutable(&*world)
-                {
-                    let [x, y, w, h] = screen_position.absolute_hit_box(*hit_box);
+                query.iter_immutable(&*world).for_each(|collider| {
+                    let p: &PhysicsWorld = &*physics_world;
+                    let [x, y, w, h] = {
+                        let collider = p.colliders.get(collider.0).unwrap();
+                        let size = collider.shape_handle().local_aabb().extents().data;
+                        let pos = collider.position().translation.vector.data;
+                        [
+                            pos[0] - size[0] / 2.0,
+                            pos[1] - size[1] / 2.0,
+                            size[0],
+                            size[1],
+                        ]
+                    };
 
                     let color = [0.0, 1.0, 0.0, 0.7];
                     let radius = 0.5;
@@ -76,9 +118,27 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
                     graphics::line(color, radius, [x + w, y, x + w, y + h], c.transform, g);
                     graphics::line(color, radius, [x, y + h, x + w, y + h], c.transform, g);
                     graphics::line(color, radius, [x, y, x, y + h], c.transform, g);
-                }
+                });
 
                 g.draw_end();
+            }
+        })
+}
+
+pub fn create_update_physics_world_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("update_physics_world_system")
+        .read_resource::<Event>()
+        .write_resource::<PhysicsWorld>()
+        .build(move |_commands, _world, (event, physics_world), _query| {
+            if let Some(_update_args) = event.update_args() {
+                let mut p: &mut PhysicsWorld = &mut *physics_world;
+                p.mechanical_world.step(
+                    &mut p.geometrical_world,
+                    &mut p.bodies,
+                    &mut p.colliders,
+                    &mut p.joint_constraints,
+                    &mut p.force_generators,
+                );
             }
         })
 }

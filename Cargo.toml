@@ -20,3 +20,9 @@ uuid = { version = "0.8.1", features = ["v4"] }
 itertools = "0.8.2"
 legion = "0.2.1"
 rand = "0.7.2"
+nalgebra = "0.18"
+ncollide2d = "0.20"
+nphysics2d = "0.12"
+
+[dev-dependencies]
+nphysics_testbed2d = "0.6"

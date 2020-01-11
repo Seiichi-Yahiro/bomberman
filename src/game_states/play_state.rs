@@ -11,10 +11,37 @@ use crate::tiles::tileset::Tileset;
 use legion::schedule::Schedule;
 use legion::world::World;
 use map::Map;
+use nalgebra::{RealField, Vector2};
+use nphysics2d::force_generator::DefaultForceGeneratorSet;
+use nphysics2d::joint::DefaultJointConstraintSet;
+use nphysics2d::object::{DefaultBodySet, DefaultColliderSet};
+use nphysics2d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
 use piston::input::Event;
 use players::{PlayerId, Players};
 
 const TILEMAP_ID: &str = "ashlands";
+
+pub struct PhysicsWorld<N: RealField = f64> {
+    mechanical_world: DefaultMechanicalWorld<N>,
+    geometrical_world: DefaultGeometricalWorld<N>,
+    bodies: DefaultBodySet<N>,
+    colliders: DefaultColliderSet<N>,
+    joint_constraints: DefaultJointConstraintSet<N>,
+    force_generators: DefaultForceGeneratorSet<N>,
+}
+
+impl PhysicsWorld<f64> {
+    pub fn new() -> PhysicsWorld<f64> {
+        PhysicsWorld {
+            mechanical_world: DefaultMechanicalWorld::new(Vector2::new(0.0, 0.0)),
+            geometrical_world: DefaultGeometricalWorld::new(),
+            bodies: DefaultBodySet::new(),
+            colliders: DefaultColliderSet::new(),
+            joint_constraints: DefaultJointConstraintSet::new(),
+            force_generators: DefaultForceGeneratorSet::new(),
+        }
+    }
+}
 
 pub struct PlayState {
     world: World,
@@ -43,6 +70,8 @@ impl PlayState {
                     .unwrap()
                     .get_asset::<Tilemap>(TILEMAP_ID);
 
+                let mut physics_world = PhysicsWorld::<f64>::new();
+
                 let mut world = resources.universe.create_world();
                 world
                     .resources
@@ -50,8 +79,8 @@ impl PlayState {
                 world.resources.insert(components::Tilemap(tilemap.clone()));
 
                 let mut map = Map::new(tilemap.clone());
-                map.create_tilemap_entities(&mut world);
-                map.create_soft_blocks(&mut world);
+                map.create_tilemap_entities(&mut world, &mut physics_world);
+                //map.create_soft_blocks(&mut world);
 
                 let mut players = Players::new();
                 let player_spawns = map.get_player_spawns();
@@ -61,6 +90,7 @@ impl PlayState {
                     &resources.asset_storage.read().unwrap(),
                     &tilemap,
                     &mut world,
+                    &mut physics_world,
                 );
                 players.create_player(
                     PlayerId::Player2,
@@ -68,16 +98,19 @@ impl PlayState {
                     &resources.asset_storage.read().unwrap(),
                     &tilemap,
                     &mut world,
+                    &mut physics_world,
                 );
 
+                world.resources.insert(physics_world);
                 let play_state = PlayState {
                     world,
                     schedule: Schedule::builder()
-                        .add_system(systems::create_controls_system())
-                        .add_system(systems::create_spawn_bomb_system())
-                        .add_system(systems::create_turn_player_system())
-                        .add_system(systems::create_move_player_system())
-                        .add_system(systems::create_collision_system())
+                        //.add_system(systems::create_controls_system())
+                        //.add_system(systems::create_spawn_bomb_system())
+                        //.add_system(systems::create_turn_player_system())
+                        //.add_system(systems::create_move_player_system())
+                        //.add_system(systems::create_collision_system())
+                        .add_system(systems::create_update_physics_world_system())
                         .add_system(systems::create_animation_system(
                             map.tile_animations.clone(),
                         ))

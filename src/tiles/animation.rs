@@ -178,6 +178,7 @@ mod tests {
             texture_holder: Default::default(),
             animation_frames_holder: Animation::load_animation_frames_from_tileset(&tileset, false),
             properties: Default::default(),
+            hit_boxes: Default::default(),
         };
 
         let mut animation =

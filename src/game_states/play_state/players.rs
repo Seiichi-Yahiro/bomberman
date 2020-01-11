@@ -1,10 +1,14 @@
-use crate::game_states::play_state::components;
+use crate::game_states::play_state::{components, PhysicsWorld};
 use crate::tiles::animation::Animation;
 use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::{TileId, TilePosition, Tileset};
 use crate::utils::asset_storage::AssetStorage;
 use legion::entity::Entity;
 use legion::world::World;
+use nalgebra::Vector2;
+use ncollide2d::shape::{Cuboid, ShapeHandle};
+use nphysics2d::math::Velocity;
+use nphysics2d::object::{BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use piston::input::{Button, Key};
 use std::collections::HashMap;
 use tiled::PropertyValue;
@@ -25,18 +29,46 @@ impl Players {
         asset_storage: &AssetStorage,
         tilemap: &Tilemap,
         world: &mut World,
+        physics_world: &mut PhysicsWorld,
     ) {
         let [x, y] = *player_spawns.get(&id).unwrap();
         let tileset = asset_storage.get_asset::<Tileset>(id.as_str());
         let tile_id = PlayerFaceDirection::Down.get_tile_id(&tileset).unwrap();
+        let [hx, hy, w, h] = tileset.hit_boxes[&tile_id];
+
+        let half_tile_width = tilemap.tile_width as f64 / 2.0;
+        let half_tile_height = tilemap.tile_height as f64 / 2.0;
+
+        let body = RigidBodyDesc::new()
+            .status(BodyStatus::Dynamic)
+            .mass(1.0)
+            .translation(Vector2::new(
+                x as f64 + half_tile_width,
+                y as f64 + half_tile_height,
+            ))
+            .velocity(Velocity::linear(0.0, 10.0))
+            .gravity_enabled(false)
+            .build();
+        let body_handle = physics_world.bodies.insert(body);
+
+        let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
+            w / 2.0,
+            h / 2.0,
+        ))))
+        .translation(Vector2::new(
+            hx - half_tile_width + w / 2.0,
+            hy - half_tile_height + h / 2.0,
+        ))
+        .build(BodyPartHandle(body_handle, 0));
+
+        let collider_handle = physics_world.colliders.insert(collider);
 
         let player = world
             .insert(
                 (components::Layer(1), components::Player(id)),
                 vec![(
-                    components::ScreenPosition([x as f64, y as f64]),
-                    components::PreviousScreenPosition([x as f64, y as f64]),
-                    components::HitBox(tileset.hit_boxes[&tile_id]),
+                    components::BodyHandle(body_handle),
+                    components::ColliderHandle(collider_handle),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),
