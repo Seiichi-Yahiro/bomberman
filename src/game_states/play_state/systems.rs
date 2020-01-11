@@ -237,19 +237,12 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
             Read<Tileset>,
             Write<DefaultTileId>,
             Write<CurrentTileId>,
-            Write<HitBox>,
         )>::query())
         .build(move |commands, world, event, query| {
             if let Some(_button_args) = event.button_args() {
                 for (
                     entity,
-                    (
-                        move_direction_stack,
-                        tileset,
-                        mut default_tile_id,
-                        mut current_tile_id,
-                        mut hit_box,
-                    ),
+                    (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
                 ) in query.iter_entities(&mut *world)
                 {
                     if let Some(move_direction) = move_direction_stack.0.last() {
@@ -265,10 +258,6 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
                                 let animation =
                                     Animation::builder(frames.clone()).looping(true).build();
                                 commands.add_component(entity, AnimationType::Ownd(animation));
-                            }
-
-                            if let Some(new_hit_box) = tileset.0.hit_boxes.get(&tile_id) {
-                                hit_box.0 = *new_hit_box;
                             }
                         }
                     }

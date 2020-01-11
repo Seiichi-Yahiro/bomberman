@@ -107,7 +107,7 @@ impl PlayState {
                     schedule: Schedule::builder()
                         .add_system(systems::create_controls_system())
                         //.add_system(systems::create_spawn_bomb_system())
-                        //.add_system(systems::create_turn_player_system())
+                        .add_system(systems::create_turn_player_system())
                         .add_system(systems::create_move_player_system())
                         .add_system(systems::create_update_physics_world_system())
                         .add_system(systems::create_animation_system(
