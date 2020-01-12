@@ -136,8 +136,9 @@ pub fn create_update_physics_world_system() -> Box<dyn Schedulable> {
         .read_resource::<Event>()
         .write_resource::<PhysicsWorld>()
         .build(move |_commands, _world, (event, physics_world), _query| {
-            if let Some(_update_args) = event.update_args() {
+            if let Some(update_args) = event.update_args() {
                 let p: &mut PhysicsWorld = &mut *physics_world;
+                p.mechanical_world.set_timestep(update_args.dt);
                 p.mechanical_world.step(
                     &mut p.geometrical_world,
                     &mut p.bodies,
