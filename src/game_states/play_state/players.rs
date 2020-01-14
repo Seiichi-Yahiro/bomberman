@@ -9,7 +9,7 @@ use nalgebra::Vector2;
 use ncollide2d::shape::{Cuboid, ShapeHandle};
 use nphysics2d::object::{BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use piston::input::{Button, Key};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tiled::PropertyValue;
 
 pub struct Players {
@@ -47,6 +47,7 @@ impl Players {
                     components::MoveDirectionStack(vec![]),
                     components::MovementSpeed(1.0),
                     Self::create_player_controls(id),
+                    components::DeactivatedCommands(HashSet::new()),
                     components::AnimationType::Ownd(
                         tileset
                             .animation_frames_holder

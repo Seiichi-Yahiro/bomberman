@@ -329,13 +329,25 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
 pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("spawn_bomb_system")
         .read_resource::<Event>()
+        .read_component::<DeactivatedCommands>()
         .with_query(<Read<SpawnBomb>>::query())
         .build(move |commands, world, event, query| {
             if let Some(_update_args) = event.update_args() {
                 query
                     .iter_entities_immutable(&*world)
                     .for_each(|(entity, spawn_bomb)| {
+                        commands.delete(entity);
+
                         let spawner_entity = spawn_bomb.0;
+
+                        if world
+                            .get_component::<DeactivatedCommands>(spawner_entity)
+                            .unwrap()
+                            .0
+                            .contains(&PlayerCommand::Bomb)
+                        {
+                            return;
+                        }
 
                         commands.exec_mut(move |world| {
                             let tile_id = 1;
@@ -406,9 +418,35 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
                             world.add_component(entity, BodyHandle(body_handle));
                             world.add_component(entity, ColliderHandle(collider_handle));
                         });
-
-                        commands.delete(entity);
                     })
+            }
+        })
+}
+
+pub fn create_bomb_spawn_command_status_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("bomb_spawn_command_status_system")
+        .read_resource::<Event>()
+        .write_component::<DeactivatedCommands>()
+        .with_query(
+            <(Read<Collision>, Read<PlayerEntity>)>::query().filter(component::<BombEntity>()),
+        )
+        .build(move |_commands, world, event, query| {
+            if let Some(_update_args) = event.update_args() {
+                query.iter(&mut *world).for_each(|(collision, player)| {
+                    if collision.0 {
+                        world
+                            .get_component_mut::<DeactivatedCommands>(player.0)
+                            .unwrap()
+                            .0
+                            .insert(PlayerCommand::Bomb);
+                    } else {
+                        world
+                            .get_component_mut::<DeactivatedCommands>(player.0)
+                            .unwrap()
+                            .0
+                            .remove(&PlayerCommand::Bomb);
+                    }
+                });
             }
         })
 }

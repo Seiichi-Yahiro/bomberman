@@ -4,7 +4,7 @@ use crate::tiles::tileset::TileId;
 use legion::entity::Entity;
 use nphysics2d::object::{DefaultBodyHandle, DefaultColliderHandle};
 use piston::input::Button;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -77,3 +77,6 @@ pub struct SoftBlockEntity(pub Entity);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HardBlockEntity(pub Entity);
+
+#[derive(Clone, Debug)]
+pub struct DeactivatedCommands(pub HashSet<PlayerCommand>);

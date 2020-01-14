@@ -108,6 +108,7 @@ impl PlayState {
                         .add_system(systems::create_controls_system())
                         .add_system(systems::create_collision_events_system())
                         .flush()
+                        .add_system(systems::create_bomb_spawn_command_status_system())
                         .add_system(systems::create_spawn_bomb_system())
                         .add_system(systems::create_update_bomb_collision_status_system())
                         .add_system(systems::create_turn_player_system())
