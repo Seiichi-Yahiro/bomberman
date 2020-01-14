@@ -1,7 +1,7 @@
 use crate::game_states::play_state::{components, PhysicsWorld};
 use crate::tiles::animation::Animation;
 use crate::tiles::tilemap::Tilemap;
-use crate::tiles::tileset::{TileId, TilePosition, Tileset};
+use crate::tiles::tileset::{HitBox, TileId, TilePosition, Tileset};
 use crate::utils::asset_storage::AssetStorage;
 use legion::entity::Entity;
 use legion::world::World;
@@ -30,38 +30,8 @@ impl Players {
         world: &mut World,
         physics_world: &mut PhysicsWorld,
     ) {
-        let [x, y] = *player_spawns.get(&id).unwrap();
         let tileset = asset_storage.get_asset::<Tileset>(id.as_str());
         let tile_id = PlayerFaceDirection::Down.get_tile_id(&tileset).unwrap();
-        let [hx, hy, w, h] = tileset.hit_boxes[&tile_id];
-
-        let half_tile_width = tilemap.tile_width as f64 / 2.0;
-        let half_tile_height = tilemap.tile_height as f64 / 2.0;
-
-        let body = RigidBodyDesc::new()
-            .status(BodyStatus::Dynamic)
-            .linear_damping(5.0)
-            .mass(1.0)
-            .translation(Vector2::new(
-                x as f64 + half_tile_width,
-                y as f64 + half_tile_height,
-            ))
-            .gravity_enabled(false)
-            .build();
-        let body_handle = physics_world.bodies.insert(body);
-
-        let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
-            w / 2.0,
-            h / 2.0,
-        ))))
-        .translation(Vector2::new(
-            hx - half_tile_width + w / 2.0,
-            hy - half_tile_height + h / 2.0,
-        ))
-        .user_data(components::EntityType::Player)
-        .build(BodyPartHandle(body_handle, 0));
-
-        let collider_handle = physics_world.colliders.insert(collider);
 
         let player = world
             .insert(
@@ -71,8 +41,6 @@ impl Players {
                     components::EntityType::Player,
                 ),
                 vec![(
-                    components::BodyHandle(body_handle),
-                    components::ColliderHandle(collider_handle),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),
@@ -98,7 +66,55 @@ impl Players {
             .copied()
             .unwrap();
 
+        let position = *player_spawns.get(&id).unwrap();
+        let hit_box = tileset.hit_boxes[&tile_id];
+        Self::add_physical_components(world, physics_world, player, tilemap, position, hit_box);
+
         self.players.push(player);
+    }
+
+    fn add_physical_components(
+        world: &mut World,
+        physics_world: &mut PhysicsWorld,
+        entity: Entity,
+        tilemap: &Tilemap,
+        pos: [u32; 2],
+        hit_box: HitBox,
+    ) {
+        let [x, y] = pos;
+        let [hx, hy, w, h] = hit_box;
+
+        let half_tile_width = tilemap.tile_width as f64 / 2.0;
+        let half_tile_height = tilemap.tile_height as f64 / 2.0;
+
+        let body = RigidBodyDesc::new()
+            .status(BodyStatus::Dynamic)
+            .linear_damping(5.0)
+            .mass(1.0)
+            .translation(Vector2::new(
+                x as f64 + half_tile_width,
+                y as f64 + half_tile_height,
+            ))
+            .gravity_enabled(false)
+            .user_data(entity)
+            .build();
+        let body_handle = physics_world.bodies.insert(body);
+
+        let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
+            w / 2.0,
+            h / 2.0,
+        ))))
+        .translation(Vector2::new(
+            hx - half_tile_width + w / 2.0,
+            hy - half_tile_height + h / 2.0,
+        ))
+        .user_data(entity)
+        .build(BodyPartHandle(body_handle, 0));
+
+        let collider_handle = physics_world.colliders.insert(collider);
+
+        world.add_component(entity, components::BodyHandle(body_handle));
+        world.add_component(entity, components::ColliderHandle(collider_handle));
     }
 
     fn create_player_controls(player_id: PlayerId) -> components::Controls {

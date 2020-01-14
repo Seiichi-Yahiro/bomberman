@@ -30,7 +30,7 @@ pub fn create_draw_system(
         .with_query(<(Read<BodyHandle>, Read<CurrentTileId>, Read<Tileset>)>::query())
         .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
-                let ref mut g = *gl.borrow_mut();
+                let g = &mut (*gl.borrow_mut());
                 let c = g.draw_begin(render_args.viewport());
 
                 let mut sprite: Option<Sprite<Texture>> = None;
@@ -311,121 +311,179 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
 pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("spawn_bomb_system")
         .read_resource::<Event>()
-        .read_resource::<AssetStorage>()
-        .write_resource::<PhysicsWorld>()
-        .read_component::<BodyHandle>()
         .with_query(<Read<SpawnBomb>>::query())
-        .build(
-            move |commands, world, (event, asset_storage, physics_world), query| {
-                if let Some(_update_args) = event.update_args() {
-                    for (entity, spawn_bomb) in query.iter_entities_immutable(&*world) {
-                        let tileset: Arc<crate::tiles::tileset::Tileset> = asset_storage
-                            .0
-                            .read()
-                            .unwrap()
-                            .get_asset::<crate::tiles::tileset::Tileset>("bomb");
+        .build(move |commands, world, event, query| {
+            if let Some(_update_args) = event.update_args() {
+                query
+                    .iter_entities_immutable(&*world)
+                    .for_each(|(entity, spawn_bomb)| {
+                        let spawner_entity = spawn_bomb.0;
 
-                        let tile_id = 1;
+                        commands.exec_mut(move |world| {
+                            let tile_id = 1;
+                            let tileset = world
+                                .resources
+                                .get::<AssetStorage>()
+                                .unwrap()
+                                .0
+                                .read()
+                                .unwrap()
+                                .get_asset::<crate::tiles::tileset::Tileset>("bomb");
 
-                        let p: &mut PhysicsWorld = &mut *physics_world;
-
-                        let [x, y] = {
-                            let body = world.get_component::<BodyHandle>(spawn_bomb.0).unwrap();
-                            let body = p.bodies.rigid_body(body.0).unwrap();
-                            let pos = body.position().translation.vector.data;
-                            [pos[0], pos[1]]
-                        };
-
-                        let (body_handle, collider_handle) = {
-                            let [hx, hy, w, h] = tileset.hit_boxes[&tile_id];
-
-                            let body = RigidBodyDesc::new()
-                                .status(BodyStatus::Disabled)
-                                .linear_damping(5.0)
-                                .mass(1.0)
-                                .translation(Vector2::new(x, y))
-                                .gravity_enabled(false)
-                                .build();
-                            let body_handle = p.bodies.insert(body);
-
-                            let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
-                                Vector2::new(w / 2.0, h / 2.0),
-                            )))
-                            /*.translation(Vector2::new(
-                                hx - half_tile_width + w / 2.0,
-                                hy - half_tile_height + h / 2.0,
-                            ))*/
-                            .user_data(EntityType::Bomb)
-                            .build(BodyPartHandle(body_handle, 0));
-
-                            let collider_handle = p.colliders.insert(collider);
-
-                            (body_handle, collider_handle)
-                        };
-
-                        let animation =
-                            Animation::builder(tileset.animation_frames_holder[&tile_id].clone())
+                            let entity = {
+                                let animation = Animation::builder(
+                                    tileset.animation_frames_holder[&tile_id].clone(),
+                                )
                                 .looping(true)
                                 .build();
 
-                        let tags = (Layer(1), EntityType::Bomb);
-                        let components = (
-                            Tileset(tileset),
-                            DefaultTileId(tile_id),
-                            CurrentTileId(tile_id),
-                            AnimationType::Ownd(animation),
-                            BodyHandle(body_handle),
-                            ColliderHandle(collider_handle),
-                        );
+                                let tags = (Layer(1), EntityType::Bomb);
+                                let components = (
+                                    Tileset(tileset.clone()),
+                                    DefaultTileId(tile_id),
+                                    CurrentTileId(tile_id),
+                                    AnimationType::Ownd(animation),
+                                );
 
-                        commands.insert(tags, vec![components]);
+                                *world.insert(tags, vec![components]).first().unwrap()
+                            };
+
+                            let (body_handle, collider_handle) = {
+                                let mut physics_world =
+                                    world.resources.get_mut::<PhysicsWorld>().unwrap();
+                                let [x, y] = {
+                                    let body =
+                                        world.get_component::<BodyHandle>(spawner_entity).unwrap();
+                                    let body = physics_world.bodies.rigid_body(body.0).unwrap();
+                                    let pos = body.position().translation.vector.data;
+                                    [pos[0], pos[1]]
+                                };
+                                let [hx, hy, w, h] = *tileset.hit_boxes.get(&tile_id).unwrap();
+
+                                let body = RigidBodyDesc::new()
+                                    .status(BodyStatus::Disabled)
+                                    .linear_damping(5.0)
+                                    .mass(1.0)
+                                    .translation(Vector2::new(x, y))
+                                    .gravity_enabled(false)
+                                    .user_data(entity)
+                                    .build();
+                                let body_handle = physics_world.bodies.insert(body);
+
+                                let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
+                                    Vector2::new(w / 2.0, h / 2.0),
+                                )))
+                                /*.translation(Vector2::new(
+                                    hx - half_tile_width + w / 2.0,
+                                    hy - half_tile_height + h / 2.0,
+                                ))*/
+                                .user_data(entity)
+                                .build(BodyPartHandle(body_handle, 0));
+
+                                let collider_handle = physics_world.colliders.insert(collider);
+
+                                (body_handle, collider_handle)
+                            };
+
+                            world.add_component(entity, BodyHandle(body_handle));
+                            world.add_component(entity, ColliderHandle(collider_handle));
+                        });
+
                         commands.delete(entity);
-                    }
-                }
-            },
-        )
+                    })
+            }
+        })
 }
 
 pub fn create_update_bomb_collision_status_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("update_bomb_collision_status_system")
         .read_resource::<Event>()
         .write_resource::<PhysicsWorld>()
-        .build(move |_commands, _world, (event, physics_world), _query| {
+        .read_component::<BodyHandle>()
+        .with_query(
+            <(Read<Collision>, Read<BombEntity>)>::query().filter(component::<PlayerEntity>()),
+        )
+        .build(move |_commands, world, (event, physics_world), query| {
+            if let Some(_update_args) = event.update_args() {
+                query.iter(&mut *world).for_each(|(collision, bomb)| {
+                    if !collision.0 {
+                        let bomb_body_handle = world.get_component::<BodyHandle>(bomb.0).unwrap();
+                        let p: &mut PhysicsWorld = &mut *physics_world;
+                        p.bodies
+                            .rigid_body_mut(bomb_body_handle.0)
+                            .unwrap()
+                            .set_status(BodyStatus::Static);
+                    }
+                });
+            }
+        })
+}
+
+pub fn create_collision_events_system() -> Box<dyn Schedulable> {
+    let add_typed_entity_component = |world: &mut World, entity: Entity, typed_entity: Entity| {
+        let entity_type = world.get_tag::<EntityType>(typed_entity).unwrap();
+
+        match entity_type {
+            EntityType::Player => world.add_component(entity, PlayerEntity(typed_entity)),
+            EntityType::Bomb => world.add_component(entity, BombEntity(typed_entity)),
+            EntityType::HardBlock => world.add_component(entity, HardBlockEntity(typed_entity)),
+            EntityType::SoftBlock => world.add_component(entity, SoftBlockEntity(typed_entity)),
+        }
+    };
+
+    SystemBuilder::new("collision_events_system")
+        .read_resource::<Event>()
+        .write_resource::<PhysicsWorld>()
+        .build(move |commands, _world, (event, physics_world), _query| {
             if let Some(_update_args) = event.update_args() {
                 let p: &mut PhysicsWorld = &mut *physics_world;
                 p.geometrical_world
                     .contact_events()
                     .iter()
-                    .filter_map(|contact_event| match contact_event {
-                        ContactEvent::Started(h1, h2) => None,
-                        ContactEvent::Stopped(h1, h2) => {
-                            let collider1 = p.colliders.get(*h1).unwrap();
-                            let collider2 = p.colliders.get(*h2).unwrap();
-                            match (
-                                collider1
-                                    .user_data()
-                                    .and_then(|it| it.downcast_ref::<EntityType>()),
-                                collider2
-                                    .user_data()
-                                    .and_then(|it| it.downcast_ref::<EntityType>()),
-                            ) {
-                                (Some(EntityType::Bomb), Some(EntityType::Player)) => {
-                                    Some(collider1.body())
-                                }
-                                (Some(EntityType::Player), Some(EntityType::Bomb)) => {
-                                    Some(collider2.body())
-                                }
-                                _ => None,
-                            }
-                        }
+                    .map(|contact_event| match contact_event {
+                        ContactEvent::Started(h1, h2) => (true, *h1, *h2),
+                        ContactEvent::Stopped(h1, h2) => (false, *h1, *h2),
                     })
-                    .collect_vec()
-                    .into_iter()
-                    .for_each(|bomb_handle| {
-                        p.bodies
-                            .rigid_body_mut(bomb_handle)
-                            .unwrap()
-                            .set_status(BodyStatus::Static);
+                    .for_each(|(is_colliding, h1, h2)| {
+                        let collider1 = p.colliders.get(h1).unwrap();
+                        let collider2 = p.colliders.get(h2).unwrap();
+                        let entities = [collider1, collider2]
+                            .iter()
+                            .map(|collider| {
+                                collider
+                                    .user_data()
+                                    .and_then(|it| it.downcast_ref::<Entity>())
+                                    .cloned()
+                            })
+                            .collect_tuple()
+                            .unwrap();
+
+                        if let (Some(entity1), Some(entity2)) = entities {
+                            commands.exec_mut(move |world| {
+                                let entity = *world
+                                    .insert((), vec![(Collision(is_colliding),)])
+                                    .first()
+                                    .unwrap();
+
+                                add_typed_entity_component(world, entity, entity1);
+                                add_typed_entity_component(world, entity, entity2);
+                            });
+                        }
+                    });
+            }
+        })
+}
+
+pub fn create_clear_collision_events_system() -> Box<dyn Schedulable> {
+    SystemBuilder::new("clear_collision_events_system")
+        .read_resource::<Event>()
+        .with_query(<Read<Collision>>::query())
+        .build(move |commands, world, event, query| {
+            if let Some(_update_args) = event.update_args() {
+                query
+                    .iter_entities_immutable(&*world)
+                    .for_each(|(entity, _)| {
+                        commands.delete(entity);
                     });
             }
         })

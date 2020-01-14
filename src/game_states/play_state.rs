@@ -106,11 +106,14 @@ impl PlayState {
                     world,
                     schedule: Schedule::builder()
                         .add_system(systems::create_controls_system())
+                        .add_system(systems::create_collision_events_system())
+                        .flush()
                         .add_system(systems::create_spawn_bomb_system())
                         .add_system(systems::create_update_bomb_collision_status_system())
                         .add_system(systems::create_turn_player_system())
                         .add_system(systems::create_move_player_system())
                         .add_system(systems::create_update_physics_world_system())
+                        .add_system(systems::create_clear_collision_events_system())
                         .add_system(systems::create_animation_system(
                             map.tile_animations.clone(),
                         ))

@@ -75,13 +75,17 @@ impl Map {
                 layer
                     .iter()
                     .map(|(&[x, y], &tile_id)| {
-                        let entity = self.create_tilemap_entity(world, layer_index, tile_id);
+                        let entity = self.create_tilemap_entity(
+                            world,
+                            components::EntityType::HardBlock,
+                            layer_index,
+                            tile_id,
+                        );
 
                         self.try_adding_physical_component(
                             world,
                             physics_world,
                             entity,
-                            components::EntityType::HardBlock,
                             tile_id,
                             x as f64,
                             y as f64,
@@ -117,17 +121,14 @@ impl Map {
                 let x = object.x.abs() as f64;
                 let y = object.y.abs() as f64;
 
-                let entity = self.create_tilemap_entity(world, *layer_id as usize, object.gid);
-
-                self.try_adding_physical_component(
+                let entity = self.create_tilemap_entity(
                     world,
-                    physics_world,
-                    entity,
                     components::EntityType::SoftBlock,
+                    *layer_id as usize,
                     object.gid,
-                    x,
-                    y,
                 );
+
+                self.try_adding_physical_component(world, physics_world, entity, object.gid, x, y);
                 self.try_adding_shared_animation_component(world, entity, object.gid);
 
                 Some(entity)
@@ -146,19 +147,24 @@ impl Map {
             .collect_vec();
     }
 
-    fn create_tilemap_entity(&self, world: &mut World, layer: usize, tile_id: TileId) -> Entity {
-        let tags = (components::Layer(layer),);
+    fn create_tilemap_entity(
+        &self,
+        world: &mut World,
+        entity_type: components::EntityType,
+        layer: usize,
+        tile_id: TileId,
+    ) -> Entity {
+        let tags = (components::Layer(layer), entity_type);
         let components = (
             components::DefaultTileId(tile_id),
             components::CurrentTileId(tile_id),
             components::Tileset(self.tilemap.tileset.clone()),
         );
 
-        world
+        *world
             .insert(tags, vec![components])
             .first()
             .unwrap()
-            .clone()
     }
 
     fn try_adding_physical_component(
@@ -166,7 +172,6 @@ impl Map {
         world: &mut World,
         physics_world: &mut PhysicsWorld,
         entity: Entity,
-        entity_type: components::EntityType,
         tile_id: TileId,
         x: f64,
         y: f64,
@@ -179,6 +184,7 @@ impl Map {
                 .translation(Vector2::new(x + half_tile_width, y + half_tile_height))
                 .status(BodyStatus::Static)
                 .gravity_enabled(false)
+                .user_data(entity)
                 .build();
 
             let body_handle = physics_world.bodies.insert(body);
@@ -191,12 +197,11 @@ impl Map {
                 hx - half_tile_width + w / 2.0,
                 hy - half_tile_height + h / 2.0,
             ))
-            .user_data(entity_type)
+            .user_data(entity)
             .build(BodyPartHandle(body_handle, 0));
 
             let collider_handle = physics_world.colliders.insert(collider);
 
-            world.add_tag(entity, entity_type);
             world.add_component(entity, components::BodyHandle(body_handle));
             world.add_component(entity, components::ColliderHandle(collider_handle));
         } else {

@@ -97,3 +97,18 @@ pub enum EntityType {
     SoftBlock,
     HardBlock,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Collision(pub bool);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlayerEntity(pub Entity);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BombEntity(pub Entity);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SoftBlockEntity(pub Entity);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HardBlockEntity(pub Entity);
