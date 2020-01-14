@@ -10,41 +10,6 @@ use std::sync::{Arc, RwLock};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScreenPosition(pub [f64; 2]);
 
-impl ScreenPosition {
-    pub fn translate(&self, p: [f64; 2]) -> Self {
-        let [x, y] = self.0;
-        let [px, py] = p;
-        Self([x + px, y + py])
-    }
-
-    pub fn absolute_hit_box(&self, hit_box: HitBox) -> crate::tiles::tileset::HitBox {
-        let [pos_x, pos_y] = self.0;
-        let [x, y, w, h] = hit_box.0;
-        [pos_x + x, pos_y + y, w, h]
-    }
-
-    pub fn map_position(&self, tilemap: Tilemap) -> [u32; 2] {
-        let [x, y] = self.0;
-        [
-            x as u32 / tilemap.0.tile_width,
-            y as u32 / tilemap.0.tile_height,
-        ]
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct PreviousScreenPosition(pub [f64; 2]);
-
-// Use with ScreenPosition
-#[derive(Clone, Copy, Debug)]
-pub struct HitBox(pub crate::tiles::tileset::HitBox);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct XMapPosition(pub u32);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct YMapPosition(pub u32);
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Layer(pub usize);
 

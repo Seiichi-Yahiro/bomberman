@@ -30,8 +30,8 @@ pub fn create_draw_system(
         .with_query(<(Read<BodyHandle>, Read<CurrentTileId>, Read<Tileset>)>::query())
         .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
-                let g = &mut (*gl.borrow_mut());
-                let c = g.draw_begin(render_args.viewport());
+                let graphics = &mut (*gl.borrow_mut());
+                let context = graphics.draw_begin(render_args.viewport());
 
                 let mut sprite: Option<Sprite<Texture>> = None;
 
@@ -55,7 +55,10 @@ pub fn create_draw_system(
 
                                 let [x, y] = pos.0;
 
-                                sprite.as_ref().unwrap().draw(c.transform.trans(x, y), g)
+                                sprite
+                                    .as_ref()
+                                    .unwrap()
+                                    .draw(context.transform.trans(x, y), graphics)
                             }
                         });
 
@@ -65,8 +68,8 @@ pub fn create_draw_system(
                         .filter(tag_value(&layer))
                         .iter_immutable(&*world)
                         .for_each(|(body, tile_id, tileset)| {
-                            let p: &PhysicsWorld = &*physics_world;
-                            let body = p.bodies.rigid_body(body.0).unwrap();
+                            let physics_world: &PhysicsWorld = &*physics_world;
+                            let body = physics_world.bodies.rigid_body(body.0).unwrap();
                             let pos = body.position().translation.vector.data;
 
                             let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
@@ -80,15 +83,15 @@ pub fn create_draw_system(
                                     sprite = Some(Sprite::from_texture_data(texture_data));
                                 }
 
-                                sprite
-                                    .as_ref()
-                                    .unwrap()
-                                    .draw(c.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0), g)
+                                sprite.as_ref().unwrap().draw(
+                                    context.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0),
+                                    graphics,
+                                )
                             }
                         });
                 }
 
-                g.draw_end();
+                graphics.draw_end();
             }
         })
 }
@@ -101,13 +104,13 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
         .with_query(<Read<ColliderHandle>>::query())
         .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
-                let ref mut g = *gl.borrow_mut();
-                let c = g.draw_begin(render_args.viewport());
+                let graphics = &mut (*gl.borrow_mut());
+                let context = graphics.draw_begin(render_args.viewport());
 
                 query.iter_immutable(&*world).for_each(|collider| {
-                    let p: &PhysicsWorld = &*physics_world;
+                    let physics_world: &PhysicsWorld = &*physics_world;
                     let [x, y, w, h] = {
-                        let collider = p.colliders.get(collider.0).unwrap();
+                        let collider = physics_world.colliders.get(collider.0).unwrap();
                         let size = collider.shape_handle().local_aabb().extents().data;
                         let pos = collider.position().translation.vector.data;
                         [
@@ -120,13 +123,25 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
 
                     let color = [0.0, 1.0, 0.0, 0.7];
                     let radius = 0.5;
-                    graphics::line(color, radius, [x, y, x + w, y], c.transform, g);
-                    graphics::line(color, radius, [x + w, y, x + w, y + h], c.transform, g);
-                    graphics::line(color, radius, [x, y + h, x + w, y + h], c.transform, g);
-                    graphics::line(color, radius, [x, y, x, y + h], c.transform, g);
+                    graphics::line(color, radius, [x, y, x + w, y], context.transform, graphics);
+                    graphics::line(
+                        color,
+                        radius,
+                        [x + w, y, x + w, y + h],
+                        context.transform,
+                        graphics,
+                    );
+                    graphics::line(
+                        color,
+                        radius,
+                        [x, y + h, x + w, y + h],
+                        context.transform,
+                        graphics,
+                    );
+                    graphics::line(color, radius, [x, y, x, y + h], context.transform, graphics);
                 });
 
-                g.draw_end();
+                graphics.draw_end();
             }
         })
 }
@@ -137,14 +152,14 @@ pub fn create_update_physics_world_system() -> Box<dyn Schedulable> {
         .write_resource::<PhysicsWorld>()
         .build(move |_commands, _world, (event, physics_world), _query| {
             if let Some(update_args) = event.update_args() {
-                let p: &mut PhysicsWorld = &mut *physics_world;
-                p.mechanical_world.set_timestep(update_args.dt);
-                p.mechanical_world.step(
-                    &mut p.geometrical_world,
-                    &mut p.bodies,
-                    &mut p.colliders,
-                    &mut p.joint_constraints,
-                    &mut p.force_generators,
+                let physics_world: &mut PhysicsWorld = &mut *physics_world;
+                physics_world.mechanical_world.set_timestep(update_args.dt);
+                physics_world.mechanical_world.step(
+                    &mut physics_world.geometrical_world,
+                    &mut physics_world.bodies,
+                    &mut physics_world.colliders,
+                    &mut physics_world.joint_constraints,
+                    &mut physics_world.force_generators,
                 );
             }
         })
@@ -285,7 +300,7 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
                     .iter(&mut *world)
                     .for_each(|(move_direction_stack, movement_speed, body)| {
                         if let Some(move_direction) = move_direction_stack.0.last() {
-                            let p: &mut PhysicsWorld = &mut *physics_world;
+                            let physics_world: &mut PhysicsWorld = &mut *physics_world;
 
                             let move_speed = movement_speed.0;
 
@@ -296,12 +311,11 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
                                 Direction::Right => Vector2::new(move_speed, 0.0),
                             };
 
-                            p.bodies.rigid_body_mut(body.0).unwrap().apply_force(
-                                0,
-                                &Force2::linear(force),
-                                ForceType::Impulse,
-                                true,
-                            );
+                            physics_world
+                                .bodies
+                                .rigid_body_mut(body.0)
+                                .unwrap()
+                                .apply_force(0, &Force2::linear(force), ForceType::Impulse, true);
                         }
                     })
             }
@@ -358,7 +372,7 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
                                     let pos = body.position().translation.vector.data;
                                     [pos[0], pos[1]]
                                 };
-                                let [hx, hy, w, h] = *tileset.hit_boxes.get(&tile_id).unwrap();
+                                let [_hx, _hy, w, h] = *tileset.hit_boxes.get(&tile_id).unwrap();
 
                                 let body = RigidBodyDesc::new()
                                     .status(BodyStatus::Disabled)
@@ -408,8 +422,9 @@ pub fn create_update_bomb_collision_status_system() -> Box<dyn Schedulable> {
                 query.iter(&mut *world).for_each(|(collision, bomb)| {
                     if !collision.0 {
                         let bomb_body_handle = world.get_component::<BodyHandle>(bomb.0).unwrap();
-                        let p: &mut PhysicsWorld = &mut *physics_world;
-                        p.bodies
+                        let physics_world: &mut PhysicsWorld = &mut *physics_world;
+                        physics_world
+                            .bodies
                             .rigid_body_mut(bomb_body_handle.0)
                             .unwrap()
                             .set_status(BodyStatus::Static);
@@ -436,8 +451,9 @@ pub fn create_collision_events_system() -> Box<dyn Schedulable> {
         .write_resource::<PhysicsWorld>()
         .build(move |commands, _world, (event, physics_world), _query| {
             if let Some(_update_args) = event.update_args() {
-                let p: &mut PhysicsWorld = &mut *physics_world;
-                p.geometrical_world
+                let physics_world: &mut PhysicsWorld = &mut *physics_world;
+                physics_world
+                    .geometrical_world
                     .contact_events()
                     .iter()
                     .map(|contact_event| match contact_event {
@@ -445,8 +461,8 @@ pub fn create_collision_events_system() -> Box<dyn Schedulable> {
                         ContactEvent::Stopped(h1, h2) => (false, *h1, *h2),
                     })
                     .for_each(|(is_colliding, h1, h2)| {
-                        let collider1 = p.colliders.get(h1).unwrap();
-                        let collider2 = p.colliders.get(h2).unwrap();
+                        let collider1 = physics_world.colliders.get(h1).unwrap();
+                        let collider2 = physics_world.colliders.get(h2).unwrap();
                         let entities = [collider1, collider2]
                             .iter()
                             .map(|collider| {
