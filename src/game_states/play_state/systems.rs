@@ -121,24 +121,22 @@ pub fn create_draw_hit_box_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnab
                         ]
                     };
 
-                    let color = [0.0, 1.0, 0.0, 0.7];
-                    let radius = 0.5;
-                    graphics::line(color, radius, [x, y, x + w, y], context.transform, graphics);
-                    graphics::line(
-                        color,
-                        radius,
+                    [
+                        [x, y, x + w, y],
                         [x + w, y, x + w, y + h],
-                        context.transform,
-                        graphics,
-                    );
-                    graphics::line(
-                        color,
-                        radius,
                         [x, y + h, x + w, y + h],
-                        context.transform,
-                        graphics,
-                    );
-                    graphics::line(color, radius, [x, y, x, y + h], context.transform, graphics);
+                        [x, y, x, y + h],
+                    ]
+                    .iter()
+                    .for_each(|line| {
+                        graphics::line(
+                            [0.0, 1.0, 0.0, 0.7],
+                            0.5,
+                            *line,
+                            context.transform,
+                            graphics,
+                        );
+                    });
                 });
 
                 graphics.draw_end();
@@ -441,16 +439,21 @@ pub fn create_update_bomb_collision_status_system() -> Box<dyn Schedulable> {
 }
 
 pub fn create_collision_events_system() -> Box<dyn Schedulable> {
-    let add_typed_entity_component = |world: &mut World, entity: Entity, typed_entity: Entity| {
-        let entity_type = world.get_tag::<EntityType>(typed_entity).unwrap();
+    let add_colliding_entity_component =
+        |world: &mut World, entity: Entity, colliding_entity: Entity| {
+            let colliding_entity_type = world.get_tag::<EntityType>(colliding_entity).unwrap();
 
-        match entity_type {
-            EntityType::Player => world.add_component(entity, PlayerEntity(typed_entity)),
-            EntityType::Bomb => world.add_component(entity, BombEntity(typed_entity)),
-            EntityType::HardBlock => world.add_component(entity, HardBlockEntity(typed_entity)),
-            EntityType::SoftBlock => world.add_component(entity, SoftBlockEntity(typed_entity)),
-        }
-    };
+            match colliding_entity_type {
+                EntityType::Player => world.add_component(entity, PlayerEntity(colliding_entity)),
+                EntityType::Bomb => world.add_component(entity, BombEntity(colliding_entity)),
+                EntityType::HardBlock => {
+                    world.add_component(entity, HardBlockEntity(colliding_entity))
+                }
+                EntityType::SoftBlock => {
+                    world.add_component(entity, SoftBlockEntity(colliding_entity))
+                }
+            }
+        };
 
     SystemBuilder::new("collision_events_system")
         .read_resource::<Event>()
@@ -480,15 +483,22 @@ pub fn create_collision_events_system() -> Box<dyn Schedulable> {
                             .collect_tuple()
                             .unwrap();
 
-                        if let (Some(entity1), Some(entity2)) = entities {
+                        if let (Some(colliding_entity1), Some(colliding_entity2)) = entities {
                             commands.exec_mut(move |world| {
                                 let entity = *world
                                     .insert((), vec![(Collision(is_colliding),)])
                                     .first()
                                     .unwrap();
 
-                                add_typed_entity_component(world, entity, entity1);
-                                add_typed_entity_component(world, entity, entity2);
+                                [colliding_entity1, colliding_entity2].iter().for_each(
+                                    |colliding_entity| {
+                                        add_colliding_entity_component(
+                                            world,
+                                            entity,
+                                            *colliding_entity,
+                                        );
+                                    },
+                                );
                             });
                         }
                     });
