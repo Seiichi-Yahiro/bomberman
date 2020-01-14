@@ -185,30 +185,31 @@ pub fn create_animation_system(
                         animation.write().unwrap().update(update_args.dt);
                     });
 
-                for (entity, (mut animation_type, mut current_tile_id, default_tile_id)) in
-                    query.iter_entities(&mut *world)
-                {
-                    match &mut *animation_type {
-                        AnimationType::Shared(animation) => {
-                            if animation.read().unwrap().is_finished() {
-                                commands.remove_component::<AnimationType>(entity);
-                                current_tile_id.0 = default_tile_id.0;
-                            } else {
-                                current_tile_id.0 = animation.read().unwrap().get_current_tile_id();
+                query.iter_entities(&mut *world).for_each(
+                    |(entity, (mut animation_type, mut current_tile_id, default_tile_id))| {
+                        match &mut *animation_type {
+                            AnimationType::Shared(animation) => {
+                                if animation.read().unwrap().is_finished() {
+                                    commands.remove_component::<AnimationType>(entity);
+                                    current_tile_id.0 = default_tile_id.0;
+                                } else {
+                                    current_tile_id.0 =
+                                        animation.read().unwrap().get_current_tile_id();
+                                }
                             }
-                        }
-                        AnimationType::Ownd(animation) => {
-                            animation.update(update_args.dt);
+                            AnimationType::Ownd(animation) => {
+                                animation.update(update_args.dt);
 
-                            if animation.is_finished() {
-                                commands.remove_component::<AnimationType>(entity);
-                                current_tile_id.0 = default_tile_id.0;
-                            } else {
-                                current_tile_id.0 = animation.get_current_tile_id();
+                                if animation.is_finished() {
+                                    commands.remove_component::<AnimationType>(entity);
+                                    current_tile_id.0 = default_tile_id.0;
+                                } else {
+                                    current_tile_id.0 = animation.get_current_tile_id();
+                                }
                             }
-                        }
-                    };
-                }
+                        };
+                    },
+                );
             }
         })
 }
@@ -219,31 +220,33 @@ pub fn create_controls_system() -> Box<dyn Schedulable> {
         .with_query(<(Read<Controls>, Write<MoveDirectionStack>)>::query())
         .build(move |commands, world, event, query| {
             if let Some(button_args) = event.button_args() {
-                for (entity, (controls, mut move_direction_stack)) in
-                    query.iter_entities(&mut *world)
-                {
-                    if let Some(action) = controls.0.get(&button_args.button) {
-                        match action {
-                            PlayerCommand::Movement(direction) => match button_args.state {
-                                ButtonState::Press => {
-                                    move_direction_stack.0.push(*direction);
-                                }
-                                ButtonState::Release => {
-                                    move_direction_stack
-                                        .0
-                                        .iter()
-                                        .position(|stored_direction| stored_direction == direction)
-                                        .map(|index| move_direction_stack.0.remove(index));
-                                }
-                            },
-                            PlayerCommand::Bomb => {
-                                if button_args.state == ButtonState::Press {
-                                    commands.insert((), vec![(SpawnBomb(entity),)]);
+                query.iter_entities(&mut *world).for_each(
+                    |(entity, (controls, mut move_direction_stack))| {
+                        if let Some(action) = controls.0.get(&button_args.button) {
+                            match action {
+                                PlayerCommand::Movement(direction) => match button_args.state {
+                                    ButtonState::Press => {
+                                        move_direction_stack.0.push(*direction);
+                                    }
+                                    ButtonState::Release => {
+                                        move_direction_stack
+                                            .0
+                                            .iter()
+                                            .position(|stored_direction| {
+                                                stored_direction == direction
+                                            })
+                                            .map(|index| move_direction_stack.0.remove(index));
+                                    }
+                                },
+                                PlayerCommand::Bomb => {
+                                    if button_args.state == ButtonState::Press {
+                                        commands.insert((), vec![(SpawnBomb(entity),)]);
+                                    }
                                 }
                             }
                         }
-                    }
-                }
+                    },
+                );
             }
         })
 }
@@ -259,28 +262,31 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
         )>::query())
         .build(move |commands, world, event, query| {
             if let Some(_button_args) = event.button_args() {
-                for (
-                    entity,
-                    (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
-                ) in query.iter_entities(&mut *world)
-                {
-                    if let Some(move_direction) = move_direction_stack.0.last() {
-                        let tile_id = PlayerFaceDirection::from(*move_direction)
-                            .get_tile_id(&tileset.0)
-                            .unwrap();
+                query.iter_entities(&mut *world).for_each(
+                    |(
+                        entity,
+                        (move_direction_stack, tileset, mut default_tile_id, mut current_tile_id),
+                    )| {
+                        if let Some(move_direction) = move_direction_stack.0.last() {
+                            let tile_id = PlayerFaceDirection::from(*move_direction)
+                                .get_tile_id(&tileset.0)
+                                .unwrap();
 
-                        if default_tile_id.0 != tile_id {
-                            default_tile_id.0 = tile_id;
-                            current_tile_id.0 = tile_id;
+                            if default_tile_id.0 != tile_id {
+                                default_tile_id.0 = tile_id;
+                                current_tile_id.0 = tile_id;
 
-                            if let Some(frames) = tileset.0.animation_frames_holder.get(&tile_id) {
-                                let animation =
-                                    Animation::builder(frames.clone()).looping(true).build();
-                                commands.add_component(entity, AnimationType::Ownd(animation));
+                                if let Some(frames) =
+                                    tileset.0.animation_frames_holder.get(&tile_id)
+                                {
+                                    let animation =
+                                        Animation::builder(frames.clone()).looping(true).build();
+                                    commands.add_component(entity, AnimationType::Ownd(animation));
+                                }
                             }
                         }
-                    }
-                }
+                    },
+                );
             }
         })
 }
