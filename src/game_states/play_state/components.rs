@@ -1,5 +1,4 @@
 use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerId};
-use crate::tiles::animation::Animation;
 use crate::tiles::tileset::TileId;
 use legion::entity::Entity;
 use nphysics2d::object::{DefaultBodyHandle, DefaultColliderHandle};
@@ -26,10 +25,7 @@ pub struct MoveDirectionStack(pub Vec<Direction>);
 pub struct Controls(pub HashMap<Button, PlayerCommand>);
 
 #[derive(Clone, Debug)]
-pub enum AnimationType {
-    Shared(Arc<RwLock<Animation>>),
-    Ownd(Animation),
-}
+pub struct Animation(pub crate::tiles::animation::Animation);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Player(pub PlayerId);

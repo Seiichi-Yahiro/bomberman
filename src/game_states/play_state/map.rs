@@ -3,9 +3,9 @@ use crate::game_states::play_state::object_groups::{
 };
 use crate::game_states::play_state::players::PlayerId;
 use crate::game_states::play_state::{components, PhysicsWorld};
-use crate::tiles::animation::Animation;
+use crate::tiles::animation::{Animation, AnimationBuilder};
 use crate::tiles::tilemap::Tilemap;
-use crate::tiles::tileset::{TileId, TilePosition};
+use crate::tiles::tileset::TileId;
 use itertools::Itertools;
 use legion::entity::Entity;
 use legion::world::World;
@@ -14,88 +14,116 @@ use ncollide2d::shape::{Cuboid, ShapeHandle};
 use nphysics2d::object::{BodyPartHandle, BodyStatus, ColliderDesc, RigidBodyDesc};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tiled::{Object, PropertyValue};
+use tiled::{Object, ObjectShape, PropertyValue};
 
 pub struct Map {
     pub tilemap: Arc<Tilemap>,
-    pub tile_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
-    pub tilemap_entities: Vec<Entity>,
+    pub hard_block_entities: Vec<Entity>,
     pub soft_block_entities: Vec<Entity>,
 }
 
 impl Map {
     pub fn new(tilemap: Arc<Tilemap>) -> Map {
         Map {
-            tile_animations: Arc::new(RwLock::new(Self::create_shared_tile_animations(&tilemap))),
             tilemap,
-            tilemap_entities: vec![],
+            hard_block_entities: vec![],
             soft_block_entities: vec![],
         }
     }
 
-    fn create_shared_tile_animations(tilemap: &Tilemap) -> HashMap<TileId, Arc<RwLock<Animation>>> {
-        let mut used_tile_ids = tilemap.get_used_tile_ids();
+    fn create_entity(
+        &self,
+        world: &mut World,
+        physics_world: &mut PhysicsWorld,
+        object: &Object,
+    ) -> Option<Entity> {
+        let render_layer = object.properties.get("render_layer");
 
-        tilemap
-            .object_groups
-            .get(ArenaObjectGroup::SoftBlockAreas.as_str())
-            .iter()
-            .flat_map(|objects| objects.iter())
-            .map(|object| object.gid)
-            .for_each(|tile_id| {
-                used_tile_ids.insert(tile_id);
-            });
+        match (render_layer, &object.shape) {
+            (Some(PropertyValue::IntValue(layer)), ObjectShape::Rect { width, height }) => {
+                let body_x = object.x as f64;
+                let body_y = object.y as f64;
+                let half_body_width = *width as f64 / 2.0;
+                let half_body_height = *height as f64 / 2.0;
 
-        used_tile_ids
-            .iter()
-            .filter_map(|tile_id| {
-                let frames = tilemap
+                let entity = {
+                    let tags = (components::EntityType::SoftBlock,);
+                    let components = (
+                        components::Layer(*layer as usize),
+                        components::DefaultTileId(object.gid),
+                        components::CurrentTileId(object.gid),
+                        components::Tileset(self.tilemap.tileset.clone()),
+                    );
+
+                    *world.insert(tags, vec![components]).first().unwrap()
+                };
+
+                let body_handle = {
+                    let body = RigidBodyDesc::new()
+                        .translation(Vector2::new(
+                            body_x + half_body_width,
+                            body_y + half_body_height,
+                        ))
+                        .status(BodyStatus::Static)
+                        .gravity_enabled(false)
+                        .user_data(entity)
+                        .build();
+
+                    physics_world.bodies.insert(body)
+                };
+
+                world.add_component(entity, components::BodyHandle(body_handle));
+
+                if let Some(&[x, y, w, h]) = self.tilemap.tileset.hit_boxes.get(&object.gid) {
+                    let half_hit_box_width = w / 2.0;
+                    let half_hit_box_height = h / 2.0;
+
+                    let shape = ShapeHandle::new(Cuboid::new(Vector2::new(
+                        half_hit_box_width,
+                        half_hit_box_height,
+                    )));
+
+                    let collider = ColliderDesc::new(shape)
+                        .translation(Vector2::new(
+                            x - half_body_width + half_hit_box_width,
+                            y - half_body_height + half_hit_box_height,
+                        ))
+                        .user_data(entity)
+                        .build(BodyPartHandle(body_handle, 0));
+
+                    let collider_handle = physics_world.colliders.insert(collider);
+
+                    world.add_component(entity, components::ColliderHandle(collider_handle));
+                }
+
+                if let Some(frames) = self
+                    .tilemap
                     .tileset
                     .animation_frames_holder
-                    .get(tile_id)
-                    .cloned()?;
+                    .get(&object.gid)
+                    .cloned()
+                {
+                    let animation = AnimationBuilder::new(frames)
+                        .looping(true)
+                        .paused(false)
+                        .build();
+                    world.add_component(entity, components::Animation(animation));
+                }
 
-                let animation = Animation::builder(frames)
-                    .paused(false)
-                    .looping(true)
-                    .build();
-
-                Some((*tile_id, Arc::new(RwLock::new(animation))))
-            })
-            .collect()
+                Some(entity)
+            }
+            _ => None,
+        }
     }
 
-    pub fn create_tilemap_entities(&mut self, world: &mut World, physics_world: &mut PhysicsWorld) {
-        self.tilemap_entities = self
+    pub fn create_hard_blocks(&mut self, world: &mut World, physics_world: &mut PhysicsWorld) {
+        self.hard_block_entities = self
             .tilemap
-            .tiles
+            .object_groups
+            .get(ArenaObjectGroup::HardBlocks.as_str())
             .iter()
-            .enumerate()
-            .flat_map(|(layer_index, layer)| {
-                layer
-                    .iter()
-                    .map(|(&[x, y], &tile_id)| {
-                        let entity = self.create_tilemap_entity(
-                            world,
-                            components::EntityType::HardBlock,
-                            layer_index,
-                            tile_id,
-                        );
-
-                        self.try_adding_physical_component(
-                            world,
-                            physics_world,
-                            entity,
-                            tile_id,
-                            x as f64,
-                            y as f64,
-                        );
-                        self.try_adding_shared_animation_component(world, entity, tile_id);
-
-                        entity
-                    })
-                    .collect_vec()
-            })
+            .flat_map(|objects| objects.iter())
+            .filter_map(|object| self.create_entity(world, physics_world, object))
             .collect_vec();
     }
 
@@ -113,29 +141,6 @@ impl Map {
                 .unwrap_or(false)
         };
 
-        let create_entity = |object: &Object| match object
-            .properties
-            .get(SoftBlockAreasProperties::RenderLayer.as_str())
-        {
-            Some(PropertyValue::IntValue(layer_id)) => {
-                let x = object.x.abs() as f64;
-                let y = object.y.abs() as f64;
-
-                let entity = self.create_tilemap_entity(
-                    world,
-                    components::EntityType::SoftBlock,
-                    *layer_id as usize,
-                    object.gid,
-                );
-
-                self.try_adding_physical_component(world, physics_world, entity, object.gid, x, y);
-                self.try_adding_shared_animation_component(world, entity, object.gid);
-
-                Some(entity)
-            }
-            _ => None,
-        };
-
         self.soft_block_entities = self
             .tilemap
             .object_groups
@@ -143,82 +148,11 @@ impl Map {
             .iter()
             .flat_map(|objects| objects.iter())
             .filter(should_spawn_soft_block)
-            .filter_map(create_entity)
+            .filter_map(|object| self.create_entity(world, physics_world, object))
             .collect_vec();
     }
 
-    fn create_tilemap_entity(
-        &self,
-        world: &mut World,
-        entity_type: components::EntityType,
-        layer: usize,
-        tile_id: TileId,
-    ) -> Entity {
-        let tags = (entity_type,);
-        let components = (
-            components::Layer(layer),
-            components::DefaultTileId(tile_id),
-            components::CurrentTileId(tile_id),
-            components::Tileset(self.tilemap.tileset.clone()),
-        );
-
-        *world.insert(tags, vec![components]).first().unwrap()
-    }
-
-    fn try_adding_physical_component(
-        &self,
-        world: &mut World,
-        physics_world: &mut PhysicsWorld,
-        entity: Entity,
-        tile_id: TileId,
-        x: f64,
-        y: f64,
-    ) {
-        if let Some(&[hx, hy, w, h]) = self.tilemap.tileset.hit_boxes.get(&tile_id) {
-            let half_tile_width = self.tilemap.tile_width as f64 / 2.0;
-            let half_tile_height = self.tilemap.tile_height as f64 / 2.0;
-
-            let body = RigidBodyDesc::new()
-                .translation(Vector2::new(x + half_tile_width, y + half_tile_height))
-                .status(BodyStatus::Static)
-                .gravity_enabled(false)
-                .user_data(entity)
-                .build();
-
-            let body_handle = physics_world.bodies.insert(body);
-
-            let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
-                w / 2.0,
-                h / 2.0,
-            ))))
-            .translation(Vector2::new(
-                hx - half_tile_width + w / 2.0,
-                hy - half_tile_height + h / 2.0,
-            ))
-            .user_data(entity)
-            .build(BodyPartHandle(body_handle, 0));
-
-            let collider_handle = physics_world.colliders.insert(collider);
-
-            world.add_component(entity, components::BodyHandle(body_handle));
-            world.add_component(entity, components::ColliderHandle(collider_handle));
-        } else {
-            world.add_component(entity, components::ScreenPosition([x, y]));
-        }
-    }
-
-    fn try_adding_shared_animation_component(
-        &self,
-        world: &mut World,
-        entity: Entity,
-        tile_id: TileId,
-    ) {
-        if let Some(animation) = self.tile_animations.read().unwrap().get(&tile_id).cloned() {
-            world.add_component(entity, components::AnimationType::Shared(animation));
-        }
-    }
-
-    pub fn get_player_spawns(&self) -> HashMap<PlayerId, TilePosition> {
+    pub fn get_player_spawns(&self) -> HashMap<PlayerId, [f64; 4]> {
         self.tilemap
             .object_groups
             .get(ArenaObjectGroup::PlayerSpawns.as_str())
@@ -228,10 +162,18 @@ impl Map {
                 object
                     .properties
                     .get(PlayerSpawnsProperties::PlayerId.as_str())
-                    .and_then(|property_value| match property_value {
-                        PropertyValue::IntValue(player_id) => Some((
+                    .and_then(|property_value| match (property_value, &object.shape) {
+                        (
+                            PropertyValue::IntValue(player_id),
+                            ObjectShape::Rect { width, height },
+                        ) => Some((
                             PlayerId::from(player_id.abs() as u32),
-                            [object.x.abs() as u32, object.y.abs() as u32],
+                            [
+                                object.x as f64,
+                                object.y as f64,
+                                *width as f64,
+                                *height as f64,
+                            ],
                         )),
                         _ => None,
                     })

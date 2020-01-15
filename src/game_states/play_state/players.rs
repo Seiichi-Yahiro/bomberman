@@ -1,7 +1,7 @@
 use crate::game_states::play_state::{components, PhysicsWorld};
-use crate::tiles::animation::Animation;
+use crate::tiles::animation::{Animation, AnimationBuilder};
 use crate::tiles::tilemap::Tilemap;
-use crate::tiles::tileset::{HitBox, TileId, TilePosition, Tileset};
+use crate::tiles::tileset::{HitBox, TileId, Tileset};
 use crate::utils::asset_storage::AssetStorage;
 use legion::entity::Entity;
 use legion::world::World;
@@ -24,7 +24,7 @@ impl Players {
     pub fn create_player(
         &mut self,
         id: PlayerId,
-        player_spawns: &HashMap<PlayerId, TilePosition>,
+        player_spawns: &HashMap<PlayerId, [f64; 4]>,
         asset_storage: &AssetStorage,
         tilemap: &Tilemap,
         world: &mut World,
@@ -45,13 +45,13 @@ impl Players {
                     components::MovementSpeed(1.0),
                     Self::create_player_controls(id),
                     components::DeactivatedCommands(HashSet::new()),
-                    components::AnimationType::Ownd(
+                    components::Animation(
                         tileset
                             .animation_frames_holder
                             .get(&tile_id)
                             .cloned()
                             .map(|frames| {
-                                Animation::builder(frames)
+                                AnimationBuilder::new(frames)
                                     .looping(true)
                                     .paused(false)
                                     .build()
@@ -64,9 +64,9 @@ impl Players {
             .copied()
             .unwrap();
 
-        let position = *player_spawns.get(&id).unwrap();
+        let spawn = *player_spawns.get(&id).unwrap();
         let hit_box = tileset.hit_boxes[&tile_id];
-        Self::add_physical_components(world, physics_world, player, tilemap, position, hit_box);
+        Self::add_physical_components(world, physics_world, player, tilemap, spawn, hit_box);
 
         self.players.push(player);
     }
@@ -76,38 +76,36 @@ impl Players {
         physics_world: &mut PhysicsWorld,
         entity: Entity,
         tilemap: &Tilemap,
-        pos: [u32; 2],
+        spawn: [f64; 4],
         hit_box: HitBox,
     ) {
-        let [x, y] = pos;
-        let [hx, hy, w, h] = hit_box;
-
-        let half_tile_width = tilemap.tile_width as f64 / 2.0;
-        let half_tile_height = tilemap.tile_height as f64 / 2.0;
+        let [spawn_x, spawn_y, spawn_w, spawn_h] = spawn;
+        let half_spawn_w = spawn_w / 2.0;
+        let half_spawn_h = spawn_h / 2.0;
+        let [hit_box_x, hit_box_y, hit_box_w, hit_box_h] = hit_box;
 
         let body = RigidBodyDesc::new()
             .status(BodyStatus::Dynamic)
             .linear_damping(5.0)
             .mass(1.0)
-            .translation(Vector2::new(
-                x as f64 + half_tile_width,
-                y as f64 + half_tile_height,
-            ))
+            .translation(Vector2::new(spawn_x + half_spawn_w, spawn_y + half_spawn_h))
             .gravity_enabled(false)
             .user_data(entity)
             .build();
         let body_handle = physics_world.bodies.insert(body);
 
-        let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(Vector2::new(
-            w / 2.0,
-            h / 2.0,
-        ))))
-        .translation(Vector2::new(
-            hx - half_tile_width + w / 2.0,
-            hy - half_tile_height + h / 2.0,
-        ))
-        .user_data(entity)
-        .build(BodyPartHandle(body_handle, 0));
+        let half_hit_box_w = hit_box_w / 2.0;
+        let half_hit_box_h = hit_box_h / 2.0;
+
+        let shape = ShapeHandle::new(Cuboid::new(Vector2::new(half_hit_box_w, half_hit_box_h)));
+
+        let collider = ColliderDesc::new(shape)
+            .translation(Vector2::new(
+                hit_box_x - half_spawn_w + half_hit_box_w,
+                hit_box_y - half_spawn_h + half_hit_box_h,
+            ))
+            .user_data(entity)
+            .build(BodyPartHandle(body_handle, 0));
 
         let collider_handle = physics_world.colliders.insert(collider);
 

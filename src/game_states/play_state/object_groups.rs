@@ -1,4 +1,5 @@
 pub enum ArenaObjectGroup {
+    HardBlocks,
     SoftBlockAreas,
     PlayerSpawns,
 }
@@ -6,6 +7,7 @@ pub enum ArenaObjectGroup {
 impl ArenaObjectGroup {
     pub fn as_str(&self) -> &str {
         match self {
+            ArenaObjectGroup::HardBlocks => "hard_blocks",
             ArenaObjectGroup::SoftBlockAreas => "soft_block_areas",
             ArenaObjectGroup::PlayerSpawns => "player_spawns",
         }
@@ -14,14 +16,12 @@ impl ArenaObjectGroup {
 
 pub enum SoftBlockAreasProperties {
     SpawnChance,
-    RenderLayer,
 }
 
 impl SoftBlockAreasProperties {
     pub fn as_str(&self) -> &str {
         match self {
             SoftBlockAreasProperties::SpawnChance => "spawn_chance",
-            SoftBlockAreasProperties::RenderLayer => "render_layer",
         }
     }
 }

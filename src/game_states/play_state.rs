@@ -5,6 +5,7 @@ mod players;
 mod systems;
 
 use crate::game_states::game_state_builder::{GameStateBuilder, GameStateBuilderBuilder};
+use crate::game_states::play_state::players::Players;
 use crate::game_states::state_manager::GameState;
 use crate::tiles::tilemap::Tilemap;
 use crate::tiles::tileset::Tileset;
@@ -17,7 +18,7 @@ use nphysics2d::joint::DefaultJointConstraintSet;
 use nphysics2d::object::{DefaultBodySet, DefaultColliderSet};
 use nphysics2d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
 use piston::input::Event;
-use players::{PlayerId, Players};
+use players::PlayerId;
 
 const TILEMAP_ID: &str = "ashlands";
 
@@ -79,7 +80,7 @@ impl PlayState {
                 world.resources.insert(components::Tilemap(tilemap.clone()));
 
                 let mut map = Map::new(tilemap.clone());
-                map.create_tilemap_entities(&mut world, &mut physics_world);
+                map.create_hard_blocks(&mut world, &mut physics_world);
                 map.create_soft_blocks(&mut world, &mut physics_world);
 
                 let mut players = Players::new();
@@ -108,16 +109,14 @@ impl PlayState {
                         .add_system(systems::create_controls_system())
                         .add_system(systems::create_collision_events_system())
                         .flush()
-                        .add_system(systems::create_bomb_spawn_command_status_system())
-                        .add_system(systems::create_spawn_bomb_system())
-                        .add_system(systems::create_update_bomb_collision_status_system())
+                        //.add_system(systems::create_bomb_spawn_command_status_system())
+                        //.add_system(systems::create_spawn_bomb_system())
+                        //.add_system(systems::create_update_bomb_collision_status_system())
                         .add_system(systems::create_turn_player_system())
                         .add_system(systems::create_move_player_system())
                         .add_system(systems::create_update_physics_world_system())
                         .add_system(systems::create_clear_collision_events_system())
-                        .add_system(systems::create_animation_system(
-                            map.tile_animations.clone(),
-                        ))
+                        .add_system(systems::create_animation_system())
                         .add_thread_local(systems::create_draw_system(resources.gl.clone()))
                         .add_thread_local(systems::create_draw_hit_box_system(resources.gl.clone()))
                         .build(),

@@ -6,7 +6,6 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::Arc;
 
-pub type TilePosition = [u32; 2];
 pub type TileId = u32;
 pub type HitBox = [f64; 4];
 

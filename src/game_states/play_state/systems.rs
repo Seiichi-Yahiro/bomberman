@@ -1,7 +1,7 @@
 use crate::game_states::play_state::components::*;
 use crate::game_states::play_state::players::{Direction, PlayerCommand, PlayerFaceDirection};
 use crate::game_states::play_state::PhysicsWorld;
-use crate::tiles::animation::Animation;
+use crate::tiles::animation::AnimationBuilder;
 use crate::tiles::tileset::TileId;
 use crate::utils::sprite::Sprite;
 use graphics::Transformed;
@@ -25,12 +25,6 @@ pub fn create_draw_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnable> {
         .read_resource::<PhysicsWorld>()
         .with_query(<(
             Read<Layer>,
-            Read<ScreenPosition>,
-            Read<CurrentTileId>,
-            Read<Tileset>,
-        )>::query())
-        .with_query(<(
-            Read<Layer>,
             Read<BodyHandle>,
             Read<CurrentTileId>,
             Read<Tileset>,
@@ -40,41 +34,25 @@ pub fn create_draw_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnable> {
                 let graphics = &mut (*gl.borrow_mut());
                 let context = graphics.draw_begin(render_args.viewport());
 
-                let non_physical_entity_iter =
-                    query
-                        .0
-                        .iter_immutable(&*world)
-                        .filter_map(|(layer, pos, tile_id, tileset)| {
-                            tileset.0.texture_holder.get_texture_data(tile_id.0).map(
-                                |texture_data| {
-                                    let [x, y] = pos.0;
-                                    let transform = context.transform.trans(x, y);
-                                    (layer.0, (texture_data, transform))
-                                },
-                            )
-                        });
-
-                let physical_entity_iter =
-                    query.1.iter_immutable(&*world).filter_map(
-                        |(layer, body, tile_id, tileset)| {
-                            tileset.0.texture_holder.get_texture_data(tile_id.0).map(
-                                |texture_data| {
-                                    let physics_world: &PhysicsWorld = &*physics_world;
-                                    let body = physics_world.bodies.rigid_body(body.0).unwrap();
-                                    let pos = body.position().translation.vector.data;
-                                    let [_, _, w, h] = texture_data.src_rect;
-                                    let transform =
-                                        context.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0);
-                                    (layer.0, (texture_data, transform))
-                                },
-                            )
-                        },
-                    );
-
                 let mut sprite: Option<Sprite<Texture>> = None;
 
-                non_physical_entity_iter
-                    .chain(physical_entity_iter)
+                query
+                    .iter_immutable(&*world)
+                    .filter_map(|(layer, body, tile_id, tileset)| {
+                        tileset
+                            .0
+                            .texture_holder
+                            .get_texture_data(tile_id.0)
+                            .map(|texture_data| {
+                                let physics_world: &PhysicsWorld = &*physics_world;
+                                let body = physics_world.bodies.rigid_body(body.0).unwrap();
+                                let pos = body.position().translation.vector.data;
+                                let [_, _, w, h] = texture_data.src_rect;
+                                let transform =
+                                    context.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0);
+                                (layer.0, (texture_data, transform))
+                            })
+                    })
                     .into_group_map()
                     .into_iter()
                     .sorted_by_key(|(layer, _)| *layer)
@@ -161,49 +139,26 @@ pub fn create_update_physics_world_system() -> Box<dyn Schedulable> {
         })
 }
 
-pub fn create_animation_system(
-    shared_animations: Arc<RwLock<HashMap<TileId, Arc<RwLock<Animation>>>>>,
-) -> Box<dyn Schedulable> {
+pub fn create_animation_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("animation_system")
         .read_resource::<Event>()
         .with_query(<(
-            Write<AnimationType>,
+            Write<Animation>,
             Write<CurrentTileId>,
             Read<DefaultTileId>,
         )>::query())
         .build(move |commands, world, event, query| {
             if let Some(update_args) = event.update_args() {
-                shared_animations
-                    .read()
-                    .unwrap()
-                    .values()
-                    .for_each(|animation| {
-                        animation.write().unwrap().update(update_args.dt);
-                    });
-
                 query.iter_entities(&mut *world).for_each(
-                    |(entity, (mut animation_type, mut current_tile_id, default_tile_id))| {
-                        match &mut *animation_type {
-                            AnimationType::Shared(animation) => {
-                                if animation.read().unwrap().is_finished() {
-                                    commands.remove_component::<AnimationType>(entity);
-                                    current_tile_id.0 = default_tile_id.0;
-                                } else {
-                                    current_tile_id.0 =
-                                        animation.read().unwrap().get_current_tile_id();
-                                }
-                            }
-                            AnimationType::Ownd(animation) => {
-                                animation.update(update_args.dt);
+                    |(entity, (mut animation, mut current_tile_id, default_tile_id))| {
+                        animation.0.update(update_args.dt);
 
-                                if animation.is_finished() {
-                                    commands.remove_component::<AnimationType>(entity);
-                                    current_tile_id.0 = default_tile_id.0;
-                                } else {
-                                    current_tile_id.0 = animation.get_current_tile_id();
-                                }
-                            }
-                        };
+                        if animation.0.is_finished() {
+                            commands.remove_component::<Animation>(entity);
+                            current_tile_id.0 = default_tile_id.0;
+                        } else {
+                            current_tile_id.0 = animation.0.get_current_tile_id();
+                        }
                     },
                 );
             }
@@ -276,8 +231,8 @@ pub fn create_turn_player_system() -> Box<dyn Schedulable> {
                                     tileset.0.animation_frames_holder.get(&tile_id)
                                 {
                                     let animation =
-                                        Animation::builder(frames.clone()).looping(true).build();
-                                    commands.add_component(entity, AnimationType::Ownd(animation));
+                                        AnimationBuilder::new(frames.clone()).looping(true).build();
+                                    commands.add_component(entity, Animation(animation));
                                 }
                             }
                         }
@@ -324,7 +279,7 @@ pub fn create_move_player_system() -> Box<dyn Schedulable> {
         })
 }
 
-pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
+/*pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
     SystemBuilder::new("spawn_bomb_system")
         .read_resource::<Event>()
         .read_component::<DeactivatedCommands>()
@@ -402,10 +357,10 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
                                 let collider = ColliderDesc::new(ShapeHandle::new(Cuboid::new(
                                     Vector2::new(w / 2.0, h / 2.0),
                                 )))
-                                /*.translation(Vector2::new(
+                                *//*.translation(Vector2::new(
                                     hx - half_tile_width + w / 2.0,
                                     hy - half_tile_height + h / 2.0,
-                                ))*/
+                                ))*//*
                                 .user_data(entity)
                                 .build(BodyPartHandle(body_handle, 0));
 
@@ -473,7 +428,7 @@ pub fn create_update_bomb_collision_status_system() -> Box<dyn Schedulable> {
                 });
             }
         })
-}
+}*/
 
 pub fn create_collision_events_system() -> Box<dyn Schedulable> {
     let add_colliding_entity_component =
