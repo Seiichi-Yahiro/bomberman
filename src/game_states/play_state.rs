@@ -118,10 +118,7 @@ impl PlayState {
                         .add_system(systems::create_animation_system(
                             map.tile_animations.clone(),
                         ))
-                        .add_thread_local(systems::create_draw_system(
-                            resources.gl.clone(),
-                            tilemap.tiles.len() + 1,
-                        ))
+                        .add_thread_local(systems::create_draw_system(resources.gl.clone()))
                         .add_thread_local(systems::create_draw_hit_box_system(resources.gl.clone()))
                         .build(),
                     map,

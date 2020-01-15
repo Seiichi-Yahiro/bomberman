@@ -154,17 +154,15 @@ impl Map {
         layer: usize,
         tile_id: TileId,
     ) -> Entity {
-        let tags = (components::Layer(layer), entity_type);
+        let tags = (entity_type,);
         let components = (
+            components::Layer(layer),
             components::DefaultTileId(tile_id),
             components::CurrentTileId(tile_id),
             components::Tileset(self.tilemap.tileset.clone()),
         );
 
-        *world
-            .insert(tags, vec![components])
-            .first()
-            .unwrap()
+        *world.insert(tags, vec![components]).first().unwrap()
     }
 
     fn try_adding_physical_component(

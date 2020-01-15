@@ -35,12 +35,9 @@ impl Players {
 
         let player = world
             .insert(
-                (
-                    components::Layer(2),
-                    components::Player(id),
-                    components::EntityType::Player,
-                ),
+                (components::Player(id), components::EntityType::Player),
                 vec![(
+                    components::Layer(1),
                     components::DefaultTileId(tile_id),
                     components::CurrentTileId(tile_id),
                     components::Tileset(tileset.clone()),

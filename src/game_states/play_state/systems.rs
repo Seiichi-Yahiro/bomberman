@@ -19,77 +19,75 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-pub fn create_draw_system(
-    gl: Rc<RefCell<GlGraphics>>,
-    number_of_layers: usize,
-) -> Box<dyn Runnable> {
+pub fn create_draw_system(gl: Rc<RefCell<GlGraphics>>) -> Box<dyn Runnable> {
     SystemBuilder::new("draw_system")
         .read_resource::<Event>()
         .read_resource::<PhysicsWorld>()
-        .with_query(<(Read<ScreenPosition>, Read<CurrentTileId>, Read<Tileset>)>::query())
-        .with_query(<(Read<BodyHandle>, Read<CurrentTileId>, Read<Tileset>)>::query())
+        .with_query(<(
+            Read<Layer>,
+            Read<ScreenPosition>,
+            Read<CurrentTileId>,
+            Read<Tileset>,
+        )>::query())
+        .with_query(<(
+            Read<Layer>,
+            Read<BodyHandle>,
+            Read<CurrentTileId>,
+            Read<Tileset>,
+        )>::query())
         .build_thread_local(move |_commands, world, (event, physics_world), query| {
             if let Some(render_args) = event.render_args() {
                 let graphics = &mut (*gl.borrow_mut());
                 let context = graphics.draw_begin(render_args.viewport());
 
-                let mut sprite: Option<Sprite<Texture>> = None;
-
-                for layer in 0..number_of_layers {
-                    let layer = Layer(layer);
-
+                let non_physical_entity_iter =
                     query
                         .0
-                        .clone()
-                        .filter(tag_value(&layer))
                         .iter_immutable(&*world)
-                        .for_each(|(pos, tile_id, tileset)| {
-                            let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
-
-                            if let Some(texture_data) = texture_data {
-                                if let Some(sprite) = &mut sprite {
-                                    sprite.update_texture_data(texture_data);
-                                } else {
-                                    sprite = Some(Sprite::from_texture_data(texture_data));
-                                }
-
-                                let [x, y] = pos.0;
-
-                                sprite
-                                    .as_ref()
-                                    .unwrap()
-                                    .draw(context.transform.trans(x, y), graphics)
-                            }
+                        .filter_map(|(layer, pos, tile_id, tileset)| {
+                            tileset.0.texture_holder.get_texture_data(tile_id.0).map(
+                                |texture_data| {
+                                    let [x, y] = pos.0;
+                                    let transform = context.transform.trans(x, y);
+                                    (layer.0, (texture_data, transform))
+                                },
+                            )
                         });
 
-                    query
-                        .1
-                        .clone()
-                        .filter(tag_value(&layer))
-                        .iter_immutable(&*world)
-                        .for_each(|(body, tile_id, tileset)| {
-                            let physics_world: &PhysicsWorld = &*physics_world;
-                            let body = physics_world.bodies.rigid_body(body.0).unwrap();
-                            let pos = body.position().translation.vector.data;
+                let physical_entity_iter =
+                    query.1.iter_immutable(&*world).filter_map(
+                        |(layer, body, tile_id, tileset)| {
+                            tileset.0.texture_holder.get_texture_data(tile_id.0).map(
+                                |texture_data| {
+                                    let physics_world: &PhysicsWorld = &*physics_world;
+                                    let body = physics_world.bodies.rigid_body(body.0).unwrap();
+                                    let pos = body.position().translation.vector.data;
+                                    let [_, _, w, h] = texture_data.src_rect;
+                                    let transform =
+                                        context.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0);
+                                    (layer.0, (texture_data, transform))
+                                },
+                            )
+                        },
+                    );
 
-                            let texture_data = tileset.0.texture_holder.get_texture_data(tile_id.0);
+                let mut sprite: Option<Sprite<Texture>> = None;
 
-                            if let Some(texture_data) = texture_data {
-                                let [_, _, w, h] = texture_data.src_rect;
+                non_physical_entity_iter
+                    .chain(physical_entity_iter)
+                    .into_group_map()
+                    .into_iter()
+                    .sorted_by_key(|(layer, _)| *layer)
+                    .flat_map(|(_layer, vec)| vec.into_iter())
+                    .for_each(|(texture_data, transform)| {
+                        if let Some(sprite) = &mut sprite {
+                            sprite.update_texture_data(texture_data);
+                        } else {
+                            sprite = Some(Sprite::from_texture_data(texture_data));
+                        }
 
-                                if let Some(sprite) = &mut sprite {
-                                    sprite.update_texture_data(texture_data);
-                                } else {
-                                    sprite = Some(Sprite::from_texture_data(texture_data));
-                                }
-
-                                sprite.as_ref().unwrap().draw(
-                                    context.transform.trans(pos[0] - w / 2.0, pos[1] - h / 2.0),
-                                    graphics,
-                                )
-                            }
-                        });
-                }
+                        sprite.as_ref().unwrap().draw(transform, graphics)
+                    });
 
                 graphics.draw_end();
             }
@@ -367,8 +365,9 @@ pub fn create_spawn_bomb_system() -> Box<dyn Schedulable> {
                                 .looping(true)
                                 .build();
 
-                                let tags = (Layer(1), EntityType::Bomb);
+                                let tags = (EntityType::Bomb,);
                                 let components = (
+                                    Layer(1),
                                     Tileset(tileset.clone()),
                                     DefaultTileId(tile_id),
                                     CurrentTileId(tile_id),

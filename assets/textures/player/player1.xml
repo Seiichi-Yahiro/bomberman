@@ -6,7 +6,7 @@
    <property name="face_direction" value="down"/>
   </properties>
   <objectgroup draworder="index" id="2">
-   <object id="1" x="7" y="11" width="19" height="20"/>
+   <object id="1" x="7" y="18" width="19" height="12"/>
   </objectgroup>
   <animation>
    <frame tileid="0" duration="200"/>
@@ -20,7 +20,7 @@
    <property name="face_direction" value="left"/>
   </properties>
   <objectgroup draworder="index" id="2">
-   <object id="1" x="7" y="11" width="19" height="20"/>
+   <object id="1" x="7" y="18" width="19" height="12"/>
   </objectgroup>
   <animation>
    <frame tileid="3" duration="200"/>
@@ -34,7 +34,7 @@
    <property name="face_direction" value="right"/>
   </properties>
   <objectgroup draworder="index" id="2">
-   <object id="1" x="7" y="11" width="19" height="20"/>
+   <object id="1" x="7" y="18" width="19" height="12"/>
   </objectgroup>
   <animation>
    <frame tileid="6" duration="200"/>
@@ -48,7 +48,7 @@
    <property name="face_direction" value="up"/>
   </properties>
   <objectgroup draworder="index" id="2">
-   <object id="1" x="7" y="11" width="19" height="20"/>
+   <object id="1" x="7" y="18" width="19" height="12"/>
   </objectgroup>
   <animation>
    <frame tileid="9" duration="200"/>
